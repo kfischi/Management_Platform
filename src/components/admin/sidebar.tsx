@@ -74,7 +74,7 @@ export function AdminSidebar() {
           <Building2 className="h-4 w-4 text-white" />
         </div>
         <div>
-          <p className="text-sm font-bold text-white">NBH Agency</p>
+          <p className="text-sm font-bold text-white">WMA Agency</p>
           <p className="text-[10px] text-slate-400">Management Platform</p>
         </div>
       </div>

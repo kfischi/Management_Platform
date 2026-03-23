@@ -11,7 +11,7 @@ const mockConversations = [
 ];
 
 const mockEmails = [
-  { id: "e1", to: "client@example.com", subject: "ברוכים הבאים ל-NBH!", status: "delivered", sentAt: "היום, 09:00" },
+  { id: "e1", to: "client@example.com", subject: "ברוכים הבאים ל-WMA!", status: "delivered", sentAt: "היום, 09:00" },
   { id: "e2", to: "lead@example.com", subject: "הצעת מחיר לאתר", status: "opened", sentAt: "אתמול, 14:30" },
   { id: "e3", to: "partner@example.com", subject: "תזכורת פגישה", status: "sent", sentAt: "אתמול, 10:00" },
 ];

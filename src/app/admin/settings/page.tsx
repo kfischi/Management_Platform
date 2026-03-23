@@ -201,11 +201,11 @@ export default function SettingsPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label>שם הסוכנות</Label>
-                  <Input defaultValue="NBH Agency" />
+                  <Input defaultValue="WMA Agency" />
                 </div>
                 <div className="space-y-1.5">
                   <Label>אימייל ראשי</Label>
-                  <Input defaultValue="info@nbh.co.il" />
+                  <Input defaultValue="info@wma.co.il" />
                 </div>
                 <div className="space-y-1.5">
                   <Label>טלפון</Label>

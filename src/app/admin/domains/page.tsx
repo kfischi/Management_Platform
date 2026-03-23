@@ -28,13 +28,13 @@ interface DomainRecord {
 
 const domains: DomainRecord[] = [
   {
-    id: "d1", domain: "nbh.co.il", client: "NBH Agency (אנחנו)",
+    id: "d1", domain: "wma.co.il", client: "WMA Agency (אנחנו)",
     registrar: "Namecheap", expiresAt: "2027-03-15", daysUntilExpiry: 357,
     sslExpiresAt: "2026-06-22", sslDaysLeft: 91, sslIssuer: "Let's Encrypt",
     status: "healthy", sslStatus: "valid",
     dns: [
       { type: "A", name: "@", value: "76.76.21.21", ttl: 300 },
-      { type: "CNAME", name: "www", value: "nbh.co.il", ttl: 300 },
+      { type: "CNAME", name: "www", value: "wma.co.il", ttl: 300 },
       { type: "MX", name: "@", value: "aspmx.l.google.com", ttl: 3600 },
     ],
     uptime: 99.98, responseTime: 245

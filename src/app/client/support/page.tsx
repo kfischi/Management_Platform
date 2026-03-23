@@ -28,7 +28,7 @@ export default function ClientSupportPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">תמיכה</h2>
-          <p className="text-muted-foreground">NBH Agency כאן לעזור לך</p>
+          <p className="text-muted-foreground">WMA Agency כאן לעזור לך</p>
         </div>
         <Button className="gap-2" onClick={() => setShowNewTicket(!showNewTicket)}>
           <Plus className="h-4 w-4" />
@@ -48,12 +48,12 @@ export default function ClientSupportPage() {
             </CardContent>
           </Card>
         </a>
-        <a href="mailto:support@nbh.co.il">
+        <a href="mailto:support@wma.co.il">
           <Card className="cursor-pointer hover:shadow-md transition-shadow">
             <CardContent className="p-4 text-center">
               <div className="text-3xl mb-2">📧</div>
               <p className="font-semibold text-sm">אימייל</p>
-              <p className="text-xs text-muted-foreground">support@nbh.co.il</p>
+              <p className="text-xs text-muted-foreground">support@wma.co.il</p>
               <Badge variant="info" className="mt-2 text-xs">תגובה תוך 24 שעות</Badge>
             </CardContent>
           </Card>

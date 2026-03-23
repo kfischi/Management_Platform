@@ -176,7 +176,7 @@ export default async function MySitePage() {
           <CardContent className="flex flex-col items-center justify-center py-20 text-center">
             <Globe className="h-14 w-14 text-muted-foreground/30 mb-4" />
             <h3 className="text-lg font-semibold mb-1">אין אתר מוגדר עדיין</h3>
-            <p className="text-muted-foreground text-sm mb-6">צור קשר עם NBH Agency להתחלת הפרויקט</p>
+            <p className="text-muted-foreground text-sm mb-6">צור קשר עם WMA Agency להתחלת הפרויקט</p>
             <Button className="gap-2">
               💬 צור קשר עכשיו
             </Button>

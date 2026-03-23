@@ -63,7 +63,7 @@ export default function LoginPage() {
             <Building2 className="h-7 w-7 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">NBH Agency</h1>
+            <h1 className="text-2xl font-bold text-white">WMA Agency</h1>
             <p className="text-slate-400 text-sm">Management Platform</p>
           </div>
         </div>

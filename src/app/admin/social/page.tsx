@@ -12,12 +12,12 @@ import {
 } from "lucide-react";
 
 const platforms = [
-  { id: "facebook", name: "Facebook", icon: "📘", connected: true, handle: "@NBHAgency", followers: "2.4K" },
+  { id: "facebook", name: "Facebook", icon: "📘", connected: true, handle: "@WMAAgency", followers: "2.4K" },
   { id: "instagram", name: "Instagram", icon: "📸", connected: true, handle: "@nbh_agency", followers: "5.1K" },
-  { id: "linkedin", name: "LinkedIn", icon: "💼", connected: true, handle: "NBH Agency", followers: "1.8K" },
+  { id: "linkedin", name: "LinkedIn", icon: "💼", connected: true, handle: "WMA Agency", followers: "1.8K" },
   { id: "tiktok", name: "TikTok", icon: "🎵", connected: false, handle: "@nbh", followers: "—" },
-  { id: "youtube", name: "YouTube", icon: "▶️", connected: false, handle: "NBH Agency", followers: "—" },
-  { id: "twitter", name: "Twitter/X", icon: "🐦", connected: true, handle: "@NBHAgency", followers: "980" },
+  { id: "youtube", name: "YouTube", icon: "▶️", connected: false, handle: "WMA Agency", followers: "—" },
+  { id: "twitter", name: "Twitter/X", icon: "🐦", connected: true, handle: "@WMAAgency", followers: "980" },
 ];
 
 const scheduledPosts = [
@@ -213,7 +213,7 @@ export default function SocialMediaPage() {
                   <div className="flex items-center gap-2 mb-3">
                     <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold">N</div>
                     <div>
-                      <p className="text-xs font-semibold">NBH Agency</p>
+                      <p className="text-xs font-semibold">WMA Agency</p>
                       <p className="text-xs text-muted-foreground">עכשיו</p>
                     </div>
                   </div>

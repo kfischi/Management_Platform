@@ -147,7 +147,7 @@ export default function SEOPage() {
             </Button>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
-            {["nbh.co.il", "fashion-brand.co.il", "techstartup.co.il"].map(site => (
+            {["wma.co.il", "fashion-brand.co.il", "techstartup.co.il"].map(site => (
               <button
                 key={site}
                 onClick={() => setUrl(`https://${site}`)}

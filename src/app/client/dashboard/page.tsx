@@ -259,7 +259,7 @@ export default async function ClientDashboardPage() {
         <CardContent className="p-4 flex items-center justify-between">
           <div>
             <p className="font-medium text-sm">צריך עזרה?</p>
-            <p className="text-xs text-muted-foreground">צוות NBH Agency זמין לך 24/7</p>
+            <p className="text-xs text-muted-foreground">צוות WMA Agency זמין לך 24/7</p>
           </div>
           <div className="flex gap-2">
             <Button size="sm" variant="outline" className="gap-1.5">

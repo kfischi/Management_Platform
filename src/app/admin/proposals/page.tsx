@@ -449,8 +449,8 @@ export default function ProposalsPage() {
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary mb-3">
                   <span className="text-white font-bold text-lg">N</span>
                 </div>
-                <h1 className="text-2xl font-bold">NBH Agency</h1>
-                <p className="text-muted-foreground text-sm">info@nbh.co.il | 050-1234567</p>
+                <h1 className="text-2xl font-bold">WMA Agency</h1>
+                <p className="text-muted-foreground text-sm">info@wma.co.il | 050-1234567</p>
               </div>
               <div className="text-right">
                 <Badge className="text-sm mb-2">הצעת מחיר</Badge>

@@ -29,8 +29,8 @@ const mockServers: CoolifyServer[] = [
 ];
 
 const mockApps: CoolifyApplication[] = [
-  { id: "app-1", name: "NBH Platform", status: "running", type: "nixpacks", fqdn: "platform.nbh.co.il", server_name: "Production Server", last_deployment_status: "success" },
-  { id: "app-2", name: "N8N", status: "running", type: "docker-compose", fqdn: "n8n.nbh.co.il", server_name: "Production Server", last_deployment_status: "success" },
+  { id: "app-1", name: "WMA Platform", status: "running", type: "nixpacks", fqdn: "platform.wma.co.il", server_name: "Production Server", last_deployment_status: "success" },
+  { id: "app-2", name: "N8N", status: "running", type: "docker-compose", fqdn: "n8n.wma.co.il", server_name: "Production Server", last_deployment_status: "success" },
   { id: "app-3", name: "Client App 1", status: "running", type: "nixpacks", fqdn: "client1.co.il", server_name: "Production Server", last_deployment_status: "success" },
   { id: "app-4", name: "Client App 2", status: "stopped", type: "dockerfile", fqdn: "client2.co.il", server_name: "Dev Server", last_deployment_status: "failed" },
 ];
