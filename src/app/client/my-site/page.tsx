@@ -3,8 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Globe, ExternalLink, Github, RefreshCw, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { Globe, ExternalLink, Github, RefreshCw, CheckCircle2, Clock, XCircle, Edit3 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import Link from "next/link";
 
 export default async function MySitePage() {
   const supabase = await createClient();
@@ -108,14 +109,22 @@ export default async function MySitePage() {
                 </div>
               </div>
 
-              {site.netlify_url && (
+              <div className="flex flex-wrap gap-2">
                 <Button className="gap-2" asChild>
-                  <a href={site.netlify_url} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-4 w-4" />
-                    פתח את האתר
-                  </a>
+                  <Link href="/client/editor">
+                    <Edit3 className="h-4 w-4" />
+                    ערוך תוכן האתר
+                  </Link>
                 </Button>
-              )}
+                {site.netlify_url && (
+                  <Button variant="outline" className="gap-2" asChild>
+                    <a href={site.netlify_url} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-4 w-4" />
+                      פתח את האתר
+                    </a>
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
 

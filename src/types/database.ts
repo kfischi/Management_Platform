@@ -8,6 +8,17 @@ export type Json =
 
 export type UserRole = "admin" | "client" | "editor";
 export type SiteStatus = "active" | "building" | "error" | "paused";
+export type BlockType =
+  | "hero"
+  | "text"
+  | "image"
+  | "gallery"
+  | "cta"
+  | "contact"
+  | "services"
+  | "faq"
+  | "testimonials"
+  | "video";
 export type DeployStatus = "success" | "building" | "failed" | "cancelled";
 export type ContractStatus = "active" | "pending" | "expired" | "cancelled";
 export type PaymentStatus = "paid" | "pending" | "overdue" | "cancelled";
@@ -183,6 +194,50 @@ export interface Database {
         };
         Insert: Omit<Database["public"]["Tables"]["audit_logs"]["Row"], "id" | "created_at">;
         Update: never;
+      };
+      site_pages: {
+        Row: {
+          id: string;
+          site_id: string;
+          slug: string;
+          title: string;
+          meta_title: string | null;
+          meta_desc: string | null;
+          is_published: boolean;
+          order_index: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["site_pages"]["Row"], "id" | "created_at" | "updated_at">;
+        Update: Partial<Database["public"]["Tables"]["site_pages"]["Insert"]>;
+      };
+      content_blocks: {
+        Row: {
+          id: string;
+          page_id: string;
+          site_id: string;
+          block_type: BlockType;
+          label: string | null;
+          content: Json;
+          order_index: number;
+          is_visible: boolean;
+          is_editable: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["content_blocks"]["Row"], "id" | "created_at" | "updated_at">;
+        Update: Partial<Database["public"]["Tables"]["content_blocks"]["Insert"]>;
+      };
+      site_settings: {
+        Row: {
+          id: string;
+          site_id: string;
+          key: string;
+          value: Json;
+          updated_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["site_settings"]["Row"], "id" | "updated_at">;
+        Update: Partial<Database["public"]["Tables"]["site_settings"]["Insert"]>;
       };
     };
     Views: Record<string, never>;
