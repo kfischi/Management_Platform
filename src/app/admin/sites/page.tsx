@@ -6,6 +6,7 @@ import { Globe, ExternalLink, Github, RefreshCw, RotateCcw } from "lucide-react"
 import { formatDate } from "@/lib/utils";
 import Link from "next/link";
 import { AddSiteModal } from "@/components/admin/add-site-modal";
+import { EditBuildHookButton } from "@/components/admin/edit-build-hook-button";
 
 export default async function SitesPage() {
   const supabase = await createClient();
@@ -82,7 +83,7 @@ export default async function SitesPage() {
                   </p>
 
                   {/* Actions */}
-                  <div className="flex gap-2 pt-1">
+                  <div className="flex flex-wrap gap-2 pt-1">
                     {site.netlify_url && (
                       <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" asChild>
                         <a href={site.netlify_url} target="_blank" rel="noopener noreferrer">
@@ -99,6 +100,10 @@ export default async function SitesPage() {
                       <RotateCcw className="h-3 w-3" />
                       Rollback
                     </Button>
+                    <EditBuildHookButton
+                      siteId={site.id}
+                      currentHook={(site as { netlify_build_hook?: string | null }).netlify_build_hook ?? null}
+                    />
                   </div>
                 </CardContent>
               </Card>

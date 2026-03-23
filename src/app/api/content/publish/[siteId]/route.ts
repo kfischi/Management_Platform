@@ -1,6 +1,7 @@
 /**
  * Publish API
- * Marks all pages as published and triggers a Netlify rebuild via deploy hook.
+ * Marks all pages as published and triggers a Netlify rebuild
+ * using the per-site netlify_build_hook stored in the sites table.
  *
  * POST /api/content/publish/[siteId]
  */
@@ -18,22 +19,25 @@ export async function POST(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "לא מחובר" }, { status: 401 });
 
-  // Verify user owns this site (or is admin)
+  // Fetch site (also validates ownership via RLS)
+  const { data: site } = await supabase
+    .from("sites")
+    .select("id, name, owner_id, netlify_build_hook")
+    .eq("id", siteId)
+    .single();
+
+  if (!site) return NextResponse.json({ error: "אתר לא נמצא" }, { status: 404 });
+
+  // Non-admin must own the site
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "admin") {
-    const { data: site } = await supabase
-      .from("sites")
-      .select("id")
-      .eq("id", siteId)
-      .eq("owner_id", user.id)
-      .single();
-
-    if (!site) return NextResponse.json({ error: "אין הרשאה" }, { status: 403 });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if ((profile as any)?.role !== "admin" && (site as any).owner_id !== user.id) {
+    return NextResponse.json({ error: "אין הרשאה" }, { status: 403 });
   }
 
   // Mark all pages as published
@@ -42,33 +46,28 @@ export async function POST(
     .update({ is_published: true })
     .eq("site_id", siteId);
 
-  // Get site's Netlify deploy hook
-  const { data: site } = await supabase
-    .from("sites")
-    .select("netlify_site_id, name")
-    .eq("id", siteId)
-    .single();
-
-  // Trigger Netlify rebuild if deploy hook is configured
-  const netlifyHook = process.env.NETLIFY_BUILD_HOOK_URL;
+  // Trigger Netlify rebuild using the per-site build hook
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const buildHook: string | null = (site as any).netlify_build_hook ?? null;
   let netlifyTriggered = false;
 
-  if (netlifyHook) {
+  if (buildHook) {
     try {
-      const res = await fetch(netlifyHook, { method: "POST" });
+      const res = await fetch(buildHook, { method: "POST" });
       netlifyTriggered = res.ok;
     } catch {
-      // Non-fatal: content is saved even if Netlify hook fails
+      // Non-fatal — content is saved even if Netlify hook fails
     }
   }
 
-  // Log the publish action
+  // Audit log
   await supabase.from("audit_logs").insert({
     user_id: user.id,
     action: "publish_content",
     resource_type: "site",
     resource_id: siteId,
-    metadata: { site_name: site?.name, netlify_triggered: netlifyTriggered },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    metadata: { site_name: (site as any).name, netlify_triggered: netlifyTriggered },
   });
 
   return NextResponse.json({
@@ -76,6 +75,8 @@ export async function POST(
     netlify_triggered: netlifyTriggered,
     message: netlifyTriggered
       ? "התוכן פורסם והאתר מתעדכן..."
-      : "התוכן נשמר. הגדר NETLIFY_BUILD_HOOK_URL לעדכון אוטומטי.",
+      : buildHook
+        ? "הפעלת הבנייה נכשלה. בדוק את ה-Build Hook."
+        : "התוכן נשמר. לא הוגדר Netlify Build Hook לאתר זה.",
   });
 }

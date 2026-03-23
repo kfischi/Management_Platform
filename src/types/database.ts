@@ -49,6 +49,7 @@ export interface Database {
           github_repo: string | null;
           netlify_site_id: string | null;
           netlify_url: string | null;
+          netlify_build_hook: string | null;
           status: SiteStatus;
           owner_id: string;
           template: string | null;
