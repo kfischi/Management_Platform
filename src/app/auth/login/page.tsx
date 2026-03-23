@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Building2, Eye, EyeOff, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -133,10 +132,7 @@ export default function LoginPage() {
         </Card>
 
         <p className="text-center text-sm text-slate-400">
-          אין לך חשבון?{" "}
-          <Link href="/auth/register" className="text-primary hover:underline">
-            צור חשבון
-          </Link>
+          לקבלת גישה — פנה לסוכנות שבנתה את האתר שלך
         </p>
       </div>
     </div>

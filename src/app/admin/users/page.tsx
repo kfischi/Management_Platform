@@ -1,18 +1,18 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Users, Plus, Shield, UserCheck, Edit, Mail } from "lucide-react";
+import { Users, Shield, UserCheck, Edit, Mail } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDate } from "@/lib/utils";
+import { InviteClientModal } from "@/components/admin/invite-client-modal";
 
 export default async function UsersPage() {
   const supabase = await createClient();
 
-  const { data: users } = await supabase
-    .from("profiles")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const [{ data: users }, { data: sites }] = await Promise.all([
+    supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+    supabase.from("sites").select("id, name, domain, owner_id").order("name"),
+  ]);
 
   const roleConfig: Record<string, { label: string; variant: "default" | "secondary" | "info"; icon: typeof Shield }> = {
     admin: { label: "Admin", variant: "default", icon: Shield },
@@ -27,10 +27,7 @@ export default async function UsersPage() {
           <h2 className="text-2xl font-bold tracking-tight">ניהול משתמשים</h2>
           <p className="text-muted-foreground">{users?.length ?? 0} משתמשים רשומים</p>
         </div>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          הזמן משתמש
-        </Button>
+        <InviteClientModal sites={sites ?? []} />
       </div>
 
       {/* Role Summary */}
