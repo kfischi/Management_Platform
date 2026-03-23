@@ -7,6 +7,7 @@ import { formatDate } from "@/lib/utils";
 import Link from "next/link";
 import { AddSiteModal } from "@/components/admin/add-site-modal";
 import { EditBuildHookButton } from "@/components/admin/edit-build-hook-button";
+import { ClientPermissionsPanel } from "@/components/admin/client-permissions-panel";
 
 export default async function SitesPage() {
   const supabase = await createClient();
@@ -104,6 +105,7 @@ export default async function SitesPage() {
                       siteId={site.id}
                       currentHook={(site as { netlify_build_hook?: string | null }).netlify_build_hook ?? null}
                     />
+                    <ClientPermissionsPanel siteId={site.id} siteName={site.name} />
                   </div>
                 </CardContent>
               </Card>

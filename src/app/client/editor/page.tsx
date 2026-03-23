@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import SiteEditor from "@/components/client/SiteEditor";
+import { FULL_PERMISSIONS, type ClientPermissions } from "@/lib/permissions";
 
 export default async function EditorPage() {
   const supabase = await createClient();
@@ -33,11 +34,16 @@ export default async function EditorPage() {
   const settings: Record<string, unknown> = {};
   for (const s of settingsRows ?? []) settings[s.key] = s.value;
 
+  // Read client permissions (set by admin via site settings)
+  const clientPermissions: ClientPermissions =
+    (settings.client_permissions as ClientPermissions) ?? FULL_PERMISSIONS;
+
   return (
     <SiteEditor
       site={site}
       initialPages={pages ?? []}
       initialSettings={settings}
+      clientPermissions={clientPermissions}
     />
   );
 }

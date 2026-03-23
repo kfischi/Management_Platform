@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import BlockEditor from "./BlockEditor";
 import SettingsEditor from "./SettingsEditor";
+import { FULL_PERMISSIONS, BLOCK_PERMISSION, type ClientPermissions } from "@/lib/permissions";
 
 type SitePage = {
   id: string;
@@ -80,11 +81,14 @@ export default function SiteEditor({
   site,
   initialPages,
   initialSettings,
+  clientPermissions,
 }: {
   site: Site;
   initialPages: SitePage[];
   initialSettings: Record<string, unknown>;
+  clientPermissions?: ClientPermissions;
 }) {
+  const perms: ClientPermissions = clientPermissions ?? FULL_PERMISSIONS;
   const [tab, setTab] = useState<TabType>("pages");
   const [pages, setPages] = useState<SitePage[]>(initialPages);
   const [selectedPageId, setSelectedPageId] = useState<string | null>(
@@ -263,9 +267,10 @@ export default function SiteEditor({
           )}
           <Button
             onClick={publishSite}
-            disabled={publishing}
+            disabled={publishing || !perms.publish_site}
             size="sm"
             className="gap-2"
+            title={!perms.publish_site ? "הרשאת פרסום לא מאופשרת" : undefined}
           >
             {publishing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -303,12 +308,14 @@ export default function SiteEditor({
           </span>
         </button>
         <button
-          onClick={() => setTab("settings")}
+          onClick={() => perms.edit_settings && setTab("settings")}
+          disabled={!perms.edit_settings}
           className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
             tab === "settings"
               ? "border-primary text-primary"
               : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
+          } ${!perms.edit_settings ? "opacity-40 cursor-not-allowed" : ""}`}
+          title={!perms.edit_settings ? "הרשאת עריכת הגדרות לא מאופשרת" : undefined}
         >
           <span className="flex items-center gap-1.5">
             <Settings className="h-3.5 w-3.5" />
@@ -415,40 +422,46 @@ export default function SiteEditor({
                               <p className="text-xs text-muted-foreground">{meta.label}</p>
                             </div>
                             <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 w-7 p-0"
-                                onClick={(e) => { e.stopPropagation(); moveBlock(block.id, "up"); }}
-                                disabled={idx === 0}
-                                title="הזז למעלה"
-                              >
-                                <ChevronUp className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 w-7 p-0"
-                                onClick={(e) => { e.stopPropagation(); moveBlock(block.id, "down"); }}
-                                disabled={idx === pageBlocks.length - 1}
-                                title="הזז למטה"
-                              >
-                                <ChevronDown className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 w-7 p-0"
-                                onClick={(e) => { e.stopPropagation(); toggleBlockVisibility(block); }}
-                                title={block.is_visible ? "הסתר" : "הצג"}
-                              >
-                                {block.is_visible ? (
-                                  <Eye className="h-3 w-3" />
-                                ) : (
-                                  <EyeOff className="h-3 w-3 text-muted-foreground" />
-                                )}
-                              </Button>
-                              {block.is_editable && (
+                              {perms.reorder_blocks && (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0"
+                                    onClick={(e) => { e.stopPropagation(); moveBlock(block.id, "up"); }}
+                                    disabled={idx === 0}
+                                    title="הזז למעלה"
+                                  >
+                                    <ChevronUp className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0"
+                                    onClick={(e) => { e.stopPropagation(); moveBlock(block.id, "down"); }}
+                                    disabled={idx === pageBlocks.length - 1}
+                                    title="הזז למטה"
+                                  >
+                                    <ChevronDown className="h-3 w-3" />
+                                  </Button>
+                                </>
+                              )}
+                              {perms.toggle_visibility && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0"
+                                  onClick={(e) => { e.stopPropagation(); toggleBlockVisibility(block); }}
+                                  title={block.is_visible ? "הסתר" : "הצג"}
+                                >
+                                  {block.is_visible ? (
+                                    <Eye className="h-3 w-3" />
+                                  ) : (
+                                    <EyeOff className="h-3 w-3 text-muted-foreground" />
+                                  )}
+                                </Button>
+                              )}
+                              {block.is_editable && perms[BLOCK_PERMISSION[block.block_type] ?? "edit_text"] && (
                                 <Button
                                   variant={isSelected ? "default" : "ghost"}
                                   size="sm"
