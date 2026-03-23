@@ -2,9 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Globe, ExternalLink, Github, Plus, RefreshCw, RotateCcw } from "lucide-react";
+import { Globe, ExternalLink, Github, RefreshCw, RotateCcw } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import Link from "next/link";
+import { AddSiteModal } from "@/components/admin/add-site-modal";
 
 export default async function SitesPage() {
   const supabase = await createClient();
@@ -30,10 +31,7 @@ export default async function SitesPage() {
             {sites?.length ?? 0} אתרים במערכת
           </p>
         </div>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          אתר חדש
-        </Button>
+        <AddSiteModal />
       </div>
 
       {/* Grid */}
@@ -115,10 +113,7 @@ export default async function SitesPage() {
             <p className="text-muted-foreground text-sm mb-6">
               התחל בהוספת האתר הראשון שלך
             </p>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              הוסף אתר ראשון
-            </Button>
+            <AddSiteModal variant="empty" />
           </CardContent>
         </Card>
       )}
