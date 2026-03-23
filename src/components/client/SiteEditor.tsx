@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Globe,
   Settings,
-  Save,
   Send,
   ChevronUp,
   ChevronDown,
@@ -25,6 +24,7 @@ import {
   CheckCircle2,
   Loader2,
   ExternalLink,
+  Bot,
 } from "lucide-react";
 import BlockEditor from "./BlockEditor";
 import SettingsEditor from "./SettingsEditor";
@@ -72,7 +72,8 @@ const BLOCK_TYPE_META: Record<string, { label: string; icon: React.ReactNode; co
   services:     { label: "שירותים",       icon: <Star className="h-4 w-4" />, color: "bg-yellow-100 text-yellow-700" },
   faq:          { label: "שאלות נפוצות",  icon: <HelpCircle className="h-4 w-4" />, color: "bg-indigo-100 text-indigo-700" },
   testimonials: { label: "המלצות",        icon: <Star className="h-4 w-4" />, color: "bg-pink-100 text-pink-700" },
-  video:        { label: "וידאו",          icon: <Video className="h-4 w-4" />, color: "bg-gray-100 text-gray-700" },
+  video:        { label: "וידאו",          icon: <Video className="h-4 w-4" />,   color: "bg-gray-100 text-gray-700" },
+  chatbot:      { label: "צ׳אטבוט",       icon: <Bot className="h-4 w-4" />,     color: "bg-cyan-100 text-cyan-700" },
 };
 
 export default function SiteEditor({
