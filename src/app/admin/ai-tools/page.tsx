@@ -16,8 +16,8 @@ const mockChatbots = [
   },
   {
     id: "cb-2",
-    name: "Lead Bot - NBH",
-    site: "nbh.co.il",
+    name: "Lead Bot - WMA",
+    site: "wma.co.il",
     provider: "openai",
     model: "gpt-4o",
     isActive: true,
