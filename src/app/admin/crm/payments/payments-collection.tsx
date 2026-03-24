@@ -194,6 +194,7 @@ export function PaymentsCollection({ initialData }: { initialData: Payment[] }) 
   const [panelOpen, setPanelOpen] = React.useState(false);
   const [selected, setSelected] = React.useState<Payment | null>(null);
   const { success } = useToast();
+  const isNew = React.useRef(false);
 
   const stats = React.useMemo(() => {
     const paid    = payments.filter((p) => p.status === "paid").reduce((s, p) => s + p.amount, 0);
@@ -203,10 +204,15 @@ export function PaymentsCollection({ initialData }: { initialData: Payment[] }) 
   }, [payments]);
 
   async function handleSave(updated: Record<string, unknown>) {
-    setPayments((prev) =>
-      prev.map((p) => (p.id === updated.id ? { ...p, ...(updated as Partial<Payment>) } : p))
-    );
-    success("נשמר בהצלחה");
+    if (isNew.current) {
+      const res = await fetch("/api/admin/payments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
+      if (res.ok) { const created = await res.json(); setPayments((prev) => [created, ...prev]); success("תשלום נוצר"); }
+    } else {
+      setPayments((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...(updated as Partial<Payment>) } : p)));
+      await fetch(`/api/admin/payments/${updated.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
+      success("נשמר בהצלחה");
+    }
+    isNew.current = false;
     setPanelOpen(false);
     setSelected(null);
   }
@@ -214,18 +220,21 @@ export function PaymentsCollection({ initialData }: { initialData: Payment[] }) 
   const bulkActions: BulkAction[] = [
     {
       label: "סמן כשולם",
-      onClick: (ids) => {
+      onClick: async (ids) => {
+        const paidDate = new Date().toISOString().slice(0, 10);
         setPayments((prev) =>
-          prev.map((p) => ids.includes(p.id) ? { ...p, status: "paid" as const, paid_date: new Date().toISOString().slice(0, 10) } : p)
+          prev.map((p) => ids.includes(p.id) ? { ...p, status: "paid" as const, paid_date: paidDate } : p)
         );
+        await Promise.all(ids.map((id) => fetch(`/api/admin/payments/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "paid", paid_date: paidDate }) })));
         success(`${ids.length} תשלומים סומנו כשולמו`);
       },
     },
     {
       label: "מחק",
       variant: "destructive",
-      onClick: (ids) => {
+      onClick: async (ids) => {
         setPayments((prev) => prev.filter((p) => !ids.includes(p.id)));
+        await Promise.all(ids.map((id) => fetch(`/api/admin/payments/${id}`, { method: "DELETE" })));
         success(`נמחקו ${ids.length} תשלומים`);
       },
     },
@@ -281,8 +290,9 @@ export function PaymentsCollection({ initialData }: { initialData: Payment[] }) 
         data={payments as unknown as Record<string, unknown>[]}
         columns={COLUMNS as unknown as ColDef<Record<string, unknown>>[]}
         keyField="id"
-        onRowClick={(row) => { setSelected(row as unknown as Payment); setPanelOpen(true); }}
+        onRowClick={(row) => { isNew.current = false; setSelected(row as unknown as Payment); setPanelOpen(true); }}
         onNew={() => {
+          isNew.current = true;
           setSelected({
             id: crypto.randomUUID(),
             client_id: null,
@@ -317,9 +327,10 @@ export function PaymentsCollection({ initialData }: { initialData: Payment[] }) 
         record={selected as unknown as Record<string, unknown>}
         fields={PANEL_FIELDS}
         onSave={handleSave}
-        onDelete={() => {
+        onDelete={async () => {
           if (selected) {
             setPayments((prev) => prev.filter((p) => p.id !== selected.id));
+            await fetch(`/api/admin/payments/${selected.id}`, { method: "DELETE" });
             success("התשלום נמחק");
             setPanelOpen(false);
           }

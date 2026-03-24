@@ -303,7 +303,7 @@ export default function AutomationsDashboard({
   );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white" dir="rtl">
+    <div className="-m-6 bg-slate-950 text-white" dir="rtl">
       {/* Header */}
       <div className="border-b border-slate-800 bg-slate-900 px-6 py-5">
         <div className="flex items-center justify-between">

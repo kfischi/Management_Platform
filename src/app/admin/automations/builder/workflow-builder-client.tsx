@@ -102,7 +102,7 @@ export default function WorkflowBuilderClient({ automation, templateId }: Props)
   }
 
   return (
-    <div className="h-screen flex flex-col bg-slate-900 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex flex-col bg-slate-900 overflow-hidden">
       {/* Top bar */}
       <div className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-800 bg-slate-950 shrink-0">
         <button

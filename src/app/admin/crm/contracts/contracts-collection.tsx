@@ -179,6 +179,7 @@ export function ContractsCollection({ initialData }: { initialData: Contract[] }
   const [panelOpen, setPanelOpen] = React.useState(false);
   const [selected, setSelected] = React.useState<Contract | null>(null);
   const { success, error: toastError } = useToast();
+  const isNew = React.useRef(false);
 
   const stats = React.useMemo(() => {
     const total = contracts.reduce((s, c) => s + c.amount, 0);
@@ -187,10 +188,17 @@ export function ContractsCollection({ initialData }: { initialData: Contract[] }
   }, [contracts]);
 
   async function handleSave(updated: Record<string, unknown>) {
-    setContracts((prev) =>
-      prev.map((c) => (c.id === updated.id ? { ...c, ...(updated as Partial<Contract>) } : c))
-    );
-    success("נשמר בהצלחה", "פרטי החוזה עודכנו");
+    if (isNew.current) {
+      const res = await fetch("/api/admin/contracts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
+      if (res.ok) { const created = await res.json(); setContracts((prev) => [created, ...prev]); success("חוזה נוצר"); }
+      else { const e = await res.json(); toastError(e.error ?? "שגיאה"); }
+    } else {
+      setContracts((prev) => prev.map((c) => (c.id === updated.id ? { ...c, ...(updated as Partial<Contract>) } : c)));
+      const res = await fetch(`/api/admin/contracts/${updated.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
+      if (res.ok) success("נשמר בהצלחה");
+      else { const e = await res.json(); toastError(e.error ?? "שגיאה"); }
+    }
+    isNew.current = false;
     setPanelOpen(false);
     setSelected(null);
   }
@@ -199,8 +207,9 @@ export function ContractsCollection({ initialData }: { initialData: Contract[] }
     {
       label: "מחק",
       variant: "destructive",
-      onClick: (ids) => {
+      onClick: async (ids) => {
         setContracts((prev) => prev.filter((c) => !ids.includes(c.id)));
+        await Promise.all(ids.map((id) => fetch(`/api/admin/contracts/${id}`, { method: "DELETE" })));
         success(`נמחקו ${ids.length} חוזים`);
       },
     },
@@ -231,6 +240,7 @@ export function ContractsCollection({ initialData }: { initialData: Contract[] }
         keyField="id"
         onRowClick={(row) => { setSelected(row as unknown as Contract); setPanelOpen(true); }}
         onNew={() => {
+          isNew.current = true;
           setSelected({
             id: crypto.randomUUID(),
             title: "",
@@ -266,9 +276,10 @@ export function ContractsCollection({ initialData }: { initialData: Contract[] }
         record={selected as unknown as Record<string, unknown>}
         fields={PANEL_FIELDS}
         onSave={handleSave}
-        onDelete={() => {
+        onDelete={async () => {
           if (selected) {
             setContracts((prev) => prev.filter((c) => c.id !== selected.id));
+            await fetch(`/api/admin/contracts/${selected.id}`, { method: "DELETE" });
             success("החוזה נמחק");
             setPanelOpen(false);
           }

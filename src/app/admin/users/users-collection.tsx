@@ -163,6 +163,7 @@ export function UsersCollection({ initialData }: { initialData: Profile[] }) {
     setUsers((prev) =>
       prev.map((u) => (u.id === updated.id ? { ...u, ...(updated as Partial<Profile>) } : u))
     );
+    await fetch(`/api/admin/users/${updated.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
     success("הפרופיל עודכן");
     setPanelOpen(false);
     setSelected(null);
@@ -171,18 +172,20 @@ export function UsersCollection({ initialData }: { initialData: Profile[] }) {
   const bulkActions: BulkAction[] = [
     {
       label: "שנה תפקיד ל-Client",
-      onClick: (ids) => {
+      onClick: async (ids) => {
         setUsers((prev) =>
           prev.map((u) => ids.includes(u.id) ? { ...u, role: "client" as const } : u)
         );
+        await Promise.all(ids.map((id) => fetch(`/api/admin/users/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role: "client" }) })));
         success(`${ids.length} משתמשים עודכנו`);
       },
     },
     {
       label: "מחק",
       variant: "destructive",
-      onClick: (ids) => {
+      onClick: async (ids) => {
         setUsers((prev) => prev.filter((u) => !ids.includes(u.id)));
+        await Promise.all(ids.map((id) => fetch(`/api/admin/users/${id}`, { method: "DELETE" })));
         success(`נמחקו ${ids.length} משתמשים`);
       },
     },
@@ -259,9 +262,10 @@ export function UsersCollection({ initialData }: { initialData: Profile[] }) {
         record={selected as unknown as Record<string, unknown>}
         fields={PANEL_FIELDS}
         onSave={handleSave}
-        onDelete={() => {
+        onDelete={async () => {
           if (selected) {
             setUsers((prev) => prev.filter((u) => u.id !== selected.id));
+            await fetch(`/api/admin/users/${selected.id}`, { method: "DELETE" });
             success("המשתמש נמחק");
             setPanelOpen(false);
           }

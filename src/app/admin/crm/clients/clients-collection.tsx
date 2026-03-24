@@ -177,6 +177,7 @@ export function ClientsCollection({ initialData }: { initialData: Client[] }) {
   const [clients, setClients] = React.useState<Client[]>(data);
   const [panelOpen, setPanelOpen] = React.useState(false);
   const [selectedRecord, setSelectedRecord] = React.useState<Client | null>(null);
+  const isNew = React.useRef(false);
 
   function openRecord(row: Client) {
     setSelectedRecord(row);
@@ -190,26 +191,24 @@ export function ClientsCollection({ initialData }: { initialData: Client[] }) {
 
   async function handleSave(updated: Record<string, unknown>) {
     // Optimistic update
-    setClients((prev) =>
-      prev.map((c) => (c.id === updated.id ? { ...c, ...(updated as Partial<Client>) } : c))
-    );
-    // TODO: await supabase.from("clients").update(updated).eq("id", updated.id)
+    if (isNew.current) {
+      const res = await fetch("/api/admin/clients", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
+      if (res.ok) { const created = await res.json(); setClients((prev) => [created, ...prev]); }
+    } else {
+      setClients((prev) => prev.map((c) => (c.id === updated.id ? { ...c, ...(updated as Partial<Client>) } : c)));
+      await fetch(`/api/admin/clients/${updated.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
+    }
+    isNew.current = false;
     closePanel();
   }
 
   const bulkActions: BulkAction[] = [
     {
-      label: "שנה סטטוס",
-      onClick: (ids) => {
-        // TODO: open status picker dialog
-        console.log("bulk status change for", ids);
-      },
-    },
-    {
       label: "מחק",
       variant: "destructive",
-      onClick: (ids) => {
+      onClick: async (ids) => {
         setClients((prev) => prev.filter((c) => !ids.includes(c.id)));
+        await Promise.all(ids.map((id) => fetch(`/api/admin/clients/${id}`, { method: "DELETE" })));
       },
     },
   ];
@@ -245,6 +244,7 @@ export function ClientsCollection({ initialData }: { initialData: Client[] }) {
         keyField="id"
         onRowClick={(row) => openRecord(row as unknown as Client)}
         onNew={() => {
+          isNew.current = true;
           setSelectedRecord({
             id: crypto.randomUUID(),
             contact_name: "",
@@ -280,9 +280,10 @@ export function ClientsCollection({ initialData }: { initialData: Client[] }) {
         record={selectedRecord as unknown as Record<string, unknown>}
         fields={PANEL_FIELDS}
         onSave={handleSave}
-        onDelete={() => {
+        onDelete={async () => {
           if (selectedRecord) {
             setClients((prev) => prev.filter((c) => c.id !== selectedRecord.id));
+            await fetch(`/api/admin/clients/${selectedRecord.id}`, { method: "DELETE" });
             closePanel();
           }
         }}
