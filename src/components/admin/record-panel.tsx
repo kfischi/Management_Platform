@@ -2,51 +2,29 @@
 
 import * as React from "react";
 import {
-  X, Save, Clock, User, Calendar, Tag, Phone, Mail,
-  Building, Globe, FileText, Hash, ToggleLeft, ChevronDown,
-  Pencil, ExternalLink, Copy, Check,
+  X, Save, Trash2, Copy, Check, ChevronDown, Clock, User,
+  Loader2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-/* ────────────────────── types ────────────────────── */
+/* ─────────── public types ─────────── */
 
-export type FieldType =
-  | "text"
-  | "email"
-  | "tel"
-  | "url"
-  | "number"
-  | "textarea"
-  | "select"
-  | "badge"
-  | "date"
-  | "readonly";
+export interface BadgeOption {
+  value: string;
+  label: string;
+  color: string; // e.g. "bg-green-600 text-white"
+}
 
 export interface FieldDef {
   key: string;
   label: string;
-  type: FieldType;
-  icon?: React.ReactNode;
-  options?: { value: string; label: string; color?: string }[];
+  type: "text" | "textarea" | "number" | "date" | "url" | "readonly" | "badge";
   section?: string;
-  readonly?: boolean;
+  icon?: React.ReactNode;
+  placeholder?: string;
   copyable?: boolean;
-}
-
-export interface RecordPanelProps {
-  open: boolean;
-  onClose: () => void;
-  title: string;
-  subtitle?: string;
-  record: Record<string, unknown> | null;
-  fields: FieldDef[];
-  onSave?: (updated: Record<string, unknown>) => Promise<void> | void;
-  onDelete?: (record: Record<string, unknown>) => void;
-  activityLog?: ActivityEntry[];
+  readonly?: boolean;
+  options?: BadgeOption[]; // for type "badge"
 }
 
 export interface ActivityEntry {
@@ -57,7 +35,19 @@ export interface ActivityEntry {
   detail?: string;
 }
 
-/* ────────────────────── component ────────────────────── */
+interface RecordPanelProps {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  subtitle?: string;
+  record: Record<string, unknown> | null;
+  fields: FieldDef[];
+  onSave: (updated: Record<string, unknown>) => Promise<void>;
+  onDelete?: () => void;
+  activityLog?: ActivityEntry[];
+}
+
+/* ─────────── RecordPanel ─────────── */
 
 export function RecordPanel({
   open,
@@ -72,203 +62,211 @@ export function RecordPanel({
 }: RecordPanelProps) {
   const [draft, setDraft] = React.useState<Record<string, unknown>>({});
   const [saving, setSaving] = React.useState(false);
-  const [dirty, setDirty] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<"fields" | "activity">("fields");
-  const [copied, setCopied] = React.useState<string | null>(null);
+  const [tab, setTab] = React.useState<"details" | "activity">("details");
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [copiedKey, setCopiedKey] = React.useState<string | null>(null);
 
-  /* sync record → draft when record changes */
+  /* Sync draft when record changes */
   React.useEffect(() => {
-    if (record) {
-      setDraft({ ...record });
-      setDirty(false);
-    }
+    if (record) setDraft({ ...record });
   }, [record]);
 
-  function update(key: string, value: unknown) {
-    setDraft((d) => ({ ...d, [key]: value }));
-    setDirty(true);
-  }
+  /* Escape to close */
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        handleSave();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, draft]);
 
-  async function handleSave() {
-    if (!onSave) return;
+  const handleSave = async () => {
     setSaving(true);
     try {
       await onSave(draft);
-      setDirty(false);
     } finally {
       setSaving(false);
     }
-  }
+  };
 
-  function copyToClipboard(value: string, key: string) {
-    navigator.clipboard.writeText(value);
-    setCopied(key);
-    setTimeout(() => setCopied(null), 1500);
-  }
+  const copyToClipboard = (value: string, key: string) => {
+    navigator.clipboard.writeText(value).then(() => {
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 2000);
+    });
+  };
 
-  /* group fields by section */
+  const set = (key: string, value: unknown) =>
+    setDraft((prev) => ({ ...prev, [key]: value }));
+
+  /* Group fields by section */
   const sections = React.useMemo(() => {
     const map = new Map<string, FieldDef[]>();
-    fields.forEach((f) => {
-      const sec = f.section ?? "פרטים";
+    for (const f of fields) {
+      const sec = f.section ?? "כללי";
       if (!map.has(sec)) map.set(sec, []);
       map.get(sec)!.push(f);
-    });
+    }
     return map;
   }, [fields]);
 
-  if (!open || !record) return null;
+  const isDirty = JSON.stringify(draft) !== JSON.stringify(record);
 
   return (
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px] animate-in fade-in-0"
+        className={cn(
+          "fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px] transition-opacity",
+          open ? "opacity-100" : "opacity-0 pointer-events-none"
+        )}
         onClick={onClose}
       />
 
-      {/* Panel */}
-      <aside className="fixed top-0 left-0 z-50 flex h-full w-[480px] flex-col bg-white shadow-2xl border-r animate-in slide-in-from-left-8 duration-300">
-
-        {/* ── Top bar ── */}
-        <div className="flex items-start justify-between border-b px-5 py-4">
-          <div className="min-w-0">
+      {/* Drawer */}
+      <div
+        className={cn(
+          "fixed top-0 left-0 z-50 h-full w-full max-w-[480px] bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-in-out",
+          open ? "translate-x-0" : "-translate-x-full"
+        )}
+        dir="rtl"
+      >
+        {/* ── Top header ── */}
+        <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b shrink-0">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-semibold truncate">{title}</h2>
-              {dirty && (
-                <span className="text-[10px] bg-amber-100 text-amber-700 rounded-full px-2 py-0.5 font-medium shrink-0">
-                  שינויים לא שמורים
-                </span>
+              <h2 className="text-base font-semibold text-slate-800 truncate">{title || "רשומה חדשה"}</h2>
+              {isDirty && (
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" title="שינויים לא שמורים" />
               )}
             </div>
-            {subtitle && <p className="text-xs text-muted-foreground mt-0.5 truncate">{subtitle}</p>}
+            {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
           </div>
-
-          <div className="flex items-center gap-1.5 shrink-0 mr-3">
-            {onSave && (
-              <Button
-                size="sm"
-                className="h-8 gap-1.5 text-xs"
-                onClick={handleSave}
-                disabled={!dirty || saving}
-              >
-                {saving ? (
-                  <span className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                ) : (
-                  <Save className="h-3.5 w-3.5" />
-                )}
-                שמור
-              </Button>
-            )}
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          <button
+            onClick={onClose}
+            className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-muted-foreground transition-colors shrink-0 mr-2"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
         {/* ── Tabs ── */}
-        <div className="flex border-b px-5 bg-slate-50/80">
-          {(["fields", "activity"] as const).map((tab) => (
+        <div className="flex border-b shrink-0">
+          {[
+            { id: "details" as const, label: "פרטים" },
+            { id: "activity" as const, label: `היסטוריה (${activityLog.length})` },
+          ].map((t) => (
             <button
-              key={tab}
+              key={t.id}
+              onClick={() => setTab(t.id)}
               className={cn(
-                "px-3 py-2.5 text-xs font-medium border-b-2 transition-colors -mb-px",
-                activeTab === tab
-                  ? "border-indigo-600 text-indigo-600"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
+                "flex-1 py-2.5 text-xs font-medium transition-colors border-b-2",
+                tab === t.id
+                  ? "border-indigo-600 text-indigo-700"
+                  : "border-transparent text-muted-foreground hover:text-slate-700"
               )}
-              onClick={() => setActiveTab(tab)}
             >
-              {tab === "fields" ? "שדות" : `פעילות (${activityLog.length})`}
+              {t.label}
             </button>
           ))}
         </div>
 
-        {/* ── Body ── */}
+        {/* ── Content ── */}
         <div className="flex-1 overflow-y-auto">
-          {activeTab === "fields" && (
+          {tab === "details" ? (
             <div className="p-5 space-y-6">
               {[...sections.entries()].map(([section, sectionFields]) => (
                 <div key={section}>
-                  <p className="mb-3 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+                  <h3 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
+                    <span className="h-px flex-1 bg-slate-100" />
                     {section}
-                  </p>
+                    <span className="h-px flex-1 bg-slate-100" />
+                  </h3>
                   <div className="space-y-3">
                     {sectionFields.map((field) => (
-                      <FieldRow
+                      <FieldInput
                         key={field.key}
                         field={field}
                         value={draft[field.key]}
-                        onChange={(v) => update(field.key, v)}
+                        onChange={(v) => set(field.key, v)}
                         onCopy={() => copyToClipboard(String(draft[field.key] ?? ""), field.key)}
-                        copied={copied === field.key}
+                        copied={copiedKey === field.key}
                       />
                     ))}
                   </div>
                 </div>
               ))}
             </div>
+          ) : (
+            <ActivityLog entries={activityLog} />
           )}
+        </div>
 
-          {activeTab === "activity" && (
-            <div className="p-5">
-              {activityLog.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
-                  <Clock className="h-8 w-8 opacity-20" />
-                  <p className="text-sm">אין פעילות עדיין</p>
+        {/* ── Footer actions ── */}
+        <div className="px-5 py-4 border-t bg-slate-50/80 flex items-center gap-2 shrink-0">
+          <button
+            onClick={handleSave}
+            disabled={saving || !isDirty}
+            className={cn(
+              "flex items-center gap-2 flex-1 justify-center rounded-lg px-4 py-2 text-sm font-semibold transition-all",
+              isDirty
+                ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm active:scale-95"
+                : "bg-slate-100 text-slate-400 cursor-not-allowed"
+            )}
+          >
+            {saving
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <Save className="h-4 w-4" />}
+            {saving ? "שומר..." : "שמור"}
+            {isDirty && !saving && (
+              <kbd className="hidden sm:inline-flex items-center rounded border border-white/30 bg-white/20 px-1 text-[9px]">⌘S</kbd>
+            )}
+          </button>
+
+          {onDelete && (
+            <>
+              {confirmDelete ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-red-600 font-medium">בטוח?</span>
+                  <button
+                    onClick={() => { onDelete(); setConfirmDelete(false); }}
+                    className="rounded-lg bg-red-600 text-white px-3 py-2 text-xs font-semibold hover:bg-red-700"
+                  >
+                    מחק
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    className="rounded-lg border px-3 py-2 text-xs hover:bg-slate-100"
+                  >
+                    ביטול
+                  </button>
                 </div>
               ) : (
-                <ol className="relative border-r border-slate-100 space-y-4 mr-3">
-                  {activityLog.map((entry) => (
-                    <li key={entry.id} className="relative pr-5">
-                      <div className="absolute right-0 top-1 h-2.5 w-2.5 -translate-x-1/2 rounded-full border-2 border-white bg-indigo-400 shadow" />
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-xs font-semibold">{entry.user}</span>
-                        <span className="text-xs text-muted-foreground">{entry.action}</span>
-                      </div>
-                      {entry.detail && (
-                        <p className="mt-0.5 text-xs text-slate-500 bg-slate-50 rounded px-2 py-1">{entry.detail}</p>
-                      )}
-                      <p className="mt-0.5 text-[10px] text-muted-foreground">{entry.timestamp}</p>
-                    </li>
-                  ))}
-                </ol>
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="flex items-center gap-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 px-3 py-2 text-xs font-medium transition-colors"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  מחק
+                </button>
               )}
-            </div>
+            </>
           )}
         </div>
-
-        {/* ── Footer metadata ── */}
-        <div className="border-t px-5 py-3 bg-slate-50/80">
-          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Calendar className="h-3 w-3" />
-              נוצר {formatRelative(String(record.created_at ?? ""))}
-            </span>
-            {!!record.updated_at && String(record.updated_at) !== String(record.created_at) && (
-              <span className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                עודכן {formatRelative(String(record.updated_at ?? ""))}
-              </span>
-            )}
-            {onDelete && (
-              <button
-                onClick={() => onDelete(record)}
-                className="text-red-400 hover:text-red-600 transition-colors"
-              >
-                מחק
-              </button>
-            )}
-          </div>
-        </div>
-      </aside>
+      </div>
     </>
   );
 }
 
-/* ──────────── FieldRow ──────────── */
+/* ─────────── FieldInput ─────────── */
 
-function FieldRow({
+function FieldInput({
   field,
   value,
   onChange,
@@ -281,103 +279,156 @@ function FieldRow({
   onCopy: () => void;
   copied: boolean;
 }) {
-  const str = String(value ?? "");
+  const strVal = String(value ?? "");
+  const isReadonly = field.readonly || field.type === "readonly";
 
   return (
     <div className="group">
-      <Label className="mb-1.5 text-xs font-medium text-slate-600 flex items-center gap-1.5">
-        {field.icon && <span className="text-slate-400">{field.icon}</span>}
+      <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 mb-1">
+        {field.icon && <span className="text-muted-foreground">{field.icon}</span>}
         {field.label}
-      </Label>
+        {field.copyable && (
+          <button
+            onClick={onCopy}
+            className="opacity-0 group-hover:opacity-100 transition-opacity ml-1 text-muted-foreground hover:text-indigo-600"
+          >
+            {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+          </button>
+        )}
+      </label>
 
-      {field.readonly || field.type === "readonly" ? (
-        <div className="flex items-center gap-2">
-          <div className="flex-1 rounded-md bg-slate-50 border px-3 py-2 text-sm text-slate-700 min-h-[36px]">
-            {str || <span className="text-muted-foreground text-xs">—</span>}
-          </div>
-          {field.copyable && (
-            <button
-              onClick={onCopy}
-              className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
-            </button>
-          )}
-        </div>
+      {field.type === "badge" && field.options ? (
+        <BadgeSelect
+          value={strVal}
+          options={field.options}
+          onChange={onChange}
+        />
       ) : field.type === "textarea" ? (
         <textarea
-          value={str}
+          value={strVal}
           onChange={(e) => onChange(e.target.value)}
           rows={3}
-          className="w-full rounded-md border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+          disabled={isReadonly}
+          placeholder={field.placeholder}
+          className="w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:bg-slate-50 disabled:text-muted-foreground resize-none"
         />
-      ) : field.type === "select" ? (
-        <select
-          value={str}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full h-9 rounded-md border bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          <option value="">בחר...</option>
-          {field.options?.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-      ) : field.type === "badge" ? (
-        <div className="flex flex-wrap gap-1.5">
-          {field.options?.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => onChange(opt.value)}
-              className={cn(
-                "rounded-full px-3 py-1 text-xs font-medium border transition-all",
-                str === opt.value
-                  ? "border-transparent shadow-sm " + (opt.color ?? "bg-indigo-600 text-white")
-                  : "border-slate-200 text-slate-500 hover:border-slate-300 bg-white"
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
       ) : (
-        <div className="relative">
-          <Input
-            type={field.type}
-            value={str}
-            onChange={(e) => onChange(e.target.value)}
-            className="h-9 text-sm pr-3"
+        <div className="relative flex items-center">
+          <input
+            type={field.type === "number" ? "number" : field.type === "date" ? "date" : field.type === "url" ? "url" : "text"}
+            value={strVal}
+            onChange={(e) => onChange(field.type === "number" ? Number(e.target.value) : e.target.value)}
+            disabled={isReadonly}
+            readOnly={isReadonly}
+            placeholder={field.placeholder}
+            className={cn(
+              "w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-300",
+              isReadonly && "bg-slate-50 text-muted-foreground cursor-default",
+              field.type === "url" && "text-indigo-600"
+            )}
           />
-          {field.copyable && str && (
-            <button
-              onClick={onCopy}
-              className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
-            </button>
-          )}
         </div>
       )}
     </div>
   );
 }
 
-/* ──────────── helpers ──────────── */
+/* ─────────── BadgeSelect ─────────── */
 
-function formatRelative(iso: string): string {
-  if (!iso) return "—";
-  try {
-    const d = new Date(iso);
-    const now = new Date();
-    const diff = now.getTime() - d.getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "עכשיו";
-    if (mins < 60) return `לפני ${mins} דקות`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `לפני ${hours} שעות`;
-    const days = Math.floor(hours / 24);
-    if (days < 30) return `לפני ${days} ימים`;
-    return d.toLocaleDateString("he-IL", { day: "numeric", month: "short", year: "numeric" });
-  } catch {
-    return iso;
+function BadgeSelect({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: BadgeOption[];
+  onChange: (v: unknown) => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const selected = options.find((o) => o.value === value) ?? options[0];
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const onClickOut = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onClickOut);
+    return () => document.removeEventListener("mousedown", onClickOut);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm w-full hover:bg-slate-50 transition-colors"
+      >
+        <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-semibold", selected?.color)}>
+          {selected?.label}
+        </span>
+        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground mr-auto" />
+      </button>
+      {open && (
+        <div className="absolute top-full mt-1 right-0 left-0 z-50 rounded-xl border bg-white shadow-xl py-1 overflow-hidden">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={cn(
+                "w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50 transition-colors",
+                opt.value === value && "bg-indigo-50"
+              )}
+            >
+              <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-semibold", opt.color)}>
+                {opt.label}
+              </span>
+              {opt.value === value && <Check className="h-3.5 w-3.5 text-indigo-600 mr-auto" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────── ActivityLog ─────────── */
+
+function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
+  if (entries.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center gap-2">
+        <Clock className="h-8 w-8 text-muted-foreground/20" />
+        <p className="text-xs text-muted-foreground">אין פעילות עדיין</p>
+      </div>
+    );
   }
+  return (
+    <div className="p-5">
+      <div className="relative space-y-0">
+        {/* vertical line */}
+        <div className="absolute right-[17px] top-0 bottom-0 w-px bg-slate-100" />
+        {entries.map((entry) => (
+          <div key={entry.id} className="flex items-start gap-3 pb-4 relative">
+            <div className="shrink-0 h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center border-2 border-white z-10">
+              <User className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <div className="flex-1 pt-1.5 min-w-0">
+              <p className="text-sm text-slate-700">
+                <span className="font-medium text-slate-800">{entry.user}</span>
+                {" "}{entry.action}
+              </p>
+              {entry.detail && (
+                <p className="text-xs text-muted-foreground mt-0.5 font-mono bg-slate-50 px-2 py-0.5 rounded-md inline-block">
+                  {entry.detail}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                <Clock className="h-2.5 w-2.5" />
+                {entry.timestamp}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
