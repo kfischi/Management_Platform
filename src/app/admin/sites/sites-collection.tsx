@@ -2,10 +2,9 @@
 
 import * as React from "react";
 import {
-  Globe, ExternalLink, Github, RefreshCw, RotateCcw,
-  LayoutGrid, List, Zap, CheckCircle2, XCircle, Clock,
+  Globe, ExternalLink, Github, RefreshCw,
+  LayoutGrid, List, CheckCircle2, XCircle, Clock,
   PauseCircle, Hash, AlignLeft, Link as LinkIcon, User,
-  Eye, EyeOff,
 } from "lucide-react";
 import { CollectionView, ColDef, BulkAction } from "@/components/admin/collection-view";
 import { RecordPanel, FieldDef } from "@/components/admin/record-panel";
@@ -48,20 +47,6 @@ function StatusBadge({ status }: { status: string }) {
     </span>
   );
 }
-
-/* ─────────── mock data ─────────── */
-
-const MOCK: Site[] = [
-  { id: "s1",  name: "טק סולושנס",       domain: "techsol.co.il",         github_repo: "techsol/main-site",    netlify_url: "https://techsol.netlify.app",     status: "active",   owner_id: "u2",  created_at: "2024-01-05T10:00:00Z", profiles: { full_name: "ישראל ישראלי", email: "israel@techsol.co.il" } },
-  { id: "s2",  name: "כהן מרקטינג",      domain: "cohen-marketing.co.il", github_repo: "cohen/marketing",      netlify_url: "https://cohen-mkt.netlify.app",   status: "active",   owner_id: "u3",  created_at: "2024-03-01T09:00:00Z", profiles: { full_name: "שרה כהן",     email: "sara@cohen-mkt.com" } },
-  { id: "s3",  name: "לוי נדל״ן",         domain: "levy-realestate.co.il", github_repo: "levy-re/website",      netlify_url: null,                              status: "building", owner_id: "u4",  created_at: "2024-12-15T11:00:00Z", profiles: { full_name: "דוד לוי",     email: "david@levy-re.co.il" } },
-  { id: "s4",  name: "מנחם פינטק",        domain: "menachem-fintech.io",   github_repo: "menachem/fintech-web", netlify_url: "https://menachem.netlify.app",    status: "active",   owner_id: "u5",  created_at: "2024-12-20T14:00:00Z", profiles: { full_name: "יוסי מנחם",   email: "yossi@menachem.io" } },
-  { id: "s5",  name: "שפירא לוגיסטיקס",  domain: "shapira-logistics.com", github_repo: "shapira/pwa-tracking", netlify_url: "https://shapira.netlify.app",     status: "active",   owner_id: "u7",  created_at: "2023-09-01T08:00:00Z", profiles: { full_name: "אבי שפירא",   email: "avi@shapira-log.com" } },
-  { id: "s6",  name: "אורן טכנולוגיות",  domain: null,                    github_repo: "oren/redesign",        netlify_url: null,                              status: "building", owner_id: "u10", created_at: "2025-02-10T10:00:00Z", profiles: { full_name: "גיל אורן",    email: "gil@oren-tech.co.il" } },
-  { id: "s7",  name: "חסן אגרו",          domain: "hassan-agro.co.il",     github_repo: "hassan/agro-site",     netlify_url: "https://hassan-agro.netlify.app", status: "error",    owner_id: "u9",  created_at: "2024-05-20T13:00:00Z", profiles: { full_name: "מרים חסן",    email: "miriam@hassan.agro" } },
-  { id: "s8",  name: "Agency Pro - Main", domain: "agencypro.co.il",       github_repo: "agency-pro/main",      netlify_url: "https://agencypro.netlify.app",   status: "active",   owner_id: "u1",  created_at: "2023-01-01T10:00:00Z", profiles: { full_name: "יוני פישר",   email: "yoni@example.com" } },
-  { id: "s9",  name: "נגר בוטיק",         domain: null,                    github_repo: null,                   netlify_url: null,                              status: "paused",   owner_id: null,  created_at: "2024-11-01T10:00:00Z", profiles: null },
-];
 
 /* ─────────── table columns ─────────── */
 
@@ -126,7 +111,7 @@ const COLUMNS: ColDef<Site>[] = [
             צפייה
           </a>
         )}
-        <DeployButton siteId={row.id} />
+        <DeployButton siteId={row.id} hasBuildHook={!!row.netlify_build_hook} />
       </div>
     ),
   },
@@ -135,10 +120,11 @@ const COLUMNS: ColDef<Site>[] = [
 /* ─────────── panel fields ─────────── */
 
 const PANEL_FIELDS: FieldDef[] = [
-  { key: "name",       label: "שם האתר",   type: "text",     icon: <Globe className="h-3.5 w-3.5" />,    section: "פרטי אתר" },
-  { key: "domain",     label: "דומיין",     type: "text",     icon: <LinkIcon className="h-3.5 w-3.5" />, section: "פרטי אתר" },
-  { key: "github_repo",label: "GitHub Repo",type: "text",     icon: <Github className="h-3.5 w-3.5" />,  section: "פרטי אתר" },
-  { key: "netlify_url",label: "Netlify URL",type: "url",      icon: <LinkIcon className="h-3.5 w-3.5" />, section: "פרטי אתר", copyable: true },
+  { key: "name",        label: "שם האתר",    type: "text",     icon: <Globe className="h-3.5 w-3.5" />,    section: "פרטי אתר" },
+  { key: "domain",      label: "דומיין",      type: "text",     icon: <LinkIcon className="h-3.5 w-3.5" />, section: "פרטי אתר" },
+  { key: "github_repo", label: "GitHub Repo", type: "text",     icon: <Github className="h-3.5 w-3.5" />,  section: "פרטי אתר" },
+  { key: "netlify_url", label: "Netlify URL", type: "url",      icon: <LinkIcon className="h-3.5 w-3.5" />, section: "פרטי אתר", copyable: true },
+  { key: "description", label: "תיאור",       type: "text",     icon: <AlignLeft className="h-3.5 w-3.5" />, section: "פרטי אתר" },
   {
     key: "status",
     label: "סטטוס",
@@ -157,18 +143,23 @@ const PANEL_FIELDS: FieldDef[] = [
 
 /* ─────────── DeployButton ─────────── */
 
-function DeployButton({ siteId }: { siteId: string }) {
+function DeployButton({ siteId, hasBuildHook }: { siteId: string; hasBuildHook: boolean }) {
   const [deploying, setDeploying] = React.useState(false);
   const { success, error } = useToast();
 
   const handleDeploy = async () => {
+    if (!hasBuildHook) {
+      error("אין Build Hook", "הגדר Netlify build hook קודם");
+      return;
+    }
     setDeploying(true);
     try {
-      // Trigger deploy logic here
-      await new Promise((r) => setTimeout(r, 1000));
-      success("Deploy הופעל", `האתר ${siteId} בונה עכשיו`);
-    } catch {
-      error("שגיאה ב-Deploy");
+      const res = await fetch(`/api/admin/sites/${siteId}/deploy`, { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "שגיאה");
+      success("Deploy הופעל", "האתר בונה עכשיו");
+    } catch (err) {
+      error("שגיאה ב-Deploy", err instanceof Error ? err.message : "");
     } finally {
       setDeploying(false);
     }
@@ -178,7 +169,11 @@ function DeployButton({ siteId }: { siteId: string }) {
     <button
       onClick={handleDeploy}
       disabled={deploying}
-      className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-slate-50 transition-colors text-slate-600 disabled:opacity-50"
+      title={!hasBuildHook ? "הגדר build hook קודם" : "הפעל deploy"}
+      className={cn(
+        "flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors disabled:opacity-50",
+        hasBuildHook ? "hover:bg-slate-50 text-slate-600" : "text-slate-400 cursor-not-allowed"
+      )}
     >
       <RefreshCw className={cn("h-3 w-3", deploying && "animate-spin")} />
       Deploy
@@ -231,10 +226,10 @@ function SiteGridCard({ site, onClick }: { site: Site; onClick: () => void }) {
             <ExternalLink className="h-3 w-3" /> צפייה
           </a>
         )}
-        <DeployButton siteId={site.id} />
+        <DeployButton siteId={site.id} hasBuildHook={!!site.netlify_build_hook} />
         <EditBuildHookButton
           siteId={site.id}
-          currentHook={(site as { netlify_build_hook?: string | null }).netlify_build_hook ?? null}
+          currentHook={site.netlify_build_hook ?? null}
         />
         <ClientPermissionsPanel siteId={site.id} siteName={site.name} />
       </div>
@@ -242,15 +237,14 @@ function SiteGridCard({ site, onClick }: { site: Site; onClick: () => void }) {
   );
 }
 
-/* ─────────── component ─────────── */
+/* ─────────── SitesCollection ─────────── */
 
 export function SitesCollection({ initialData }: { initialData: Site[] }) {
-  const data = initialData.length > 0 ? initialData : MOCK;
-  const [sites, setSites] = React.useState<Site[]>(data);
+  const [sites, setSites] = React.useState<Site[]>(initialData);
   const [viewMode, setViewMode] = React.useState<"table" | "grid">("grid");
   const [panelOpen, setPanelOpen] = React.useState(false);
   const [selected, setSelected] = React.useState<Site | null>(null);
-  const { success } = useToast();
+  const { success, error } = useToast();
 
   /* Status summary */
   const summary = React.useMemo(() => ({
@@ -261,32 +255,68 @@ export function SitesCollection({ initialData }: { initialData: Site[] }) {
   }), [sites]);
 
   async function handleSave(updated: Record<string, unknown>) {
-    setSites((prev) =>
-      prev.map((s) => (s.id === updated.id ? { ...s, ...(updated as Partial<Site>) } : s))
+    try {
+      const res = await fetch(`/api/admin/sites/${updated.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "שגיאה בשמירה");
+      setSites((prev) =>
+        prev.map((s) => (s.id === updated.id ? { ...s, ...(json as Partial<Site>) } : s))
+      );
+      success("האתר עודכן");
+      setPanelOpen(false);
+      setSelected(null);
+    } catch (err) {
+      error("שגיאה בשמירה", err instanceof Error ? err.message : "");
+    }
+  }
+
+  async function handleDelete(site: Site) {
+    try {
+      const res = await fetch(`/api/admin/sites/${site.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.error ?? "שגיאה במחיקה");
+      }
+      setSites((prev) => prev.filter((s) => s.id !== site.id));
+      success("האתר נמחק");
+      setPanelOpen(false);
+      setSelected(null);
+    } catch (err) {
+      error("שגיאה במחיקה", err instanceof Error ? err.message : "");
+    }
+  }
+
+  async function handleBulkPause(ids: string[]) {
+    await Promise.all(
+      ids.map((id) =>
+        fetch(`/api/admin/sites/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "paused" }),
+        })
+      )
     );
-    success("האתר עודכן");
-    setPanelOpen(false);
-    setSelected(null);
+    setSites((prev) =>
+      prev.map((s) => ids.includes(s.id) ? { ...s, status: "paused" as const } : s)
+    );
+    success(`${ids.length} אתרים הושהו`);
+  }
+
+  async function handleBulkDelete(ids: string[]) {
+    await Promise.all(
+      ids.map((id) => fetch(`/api/admin/sites/${id}`, { method: "DELETE" }))
+    );
+    setSites((prev) => prev.filter((s) => !ids.includes(s.id)));
+    success(`נמחקו ${ids.length} אתרים`);
   }
 
   const bulkActions: BulkAction[] = [
-    {
-      label: "השהה",
-      onClick: (ids) => {
-        setSites((prev) =>
-          prev.map((s) => ids.includes(s.id) ? { ...s, status: "paused" as const } : s)
-        );
-        success(`${ids.length} אתרים הושהו`);
-      },
-    },
-    {
-      label: "מחק",
-      variant: "destructive",
-      onClick: (ids) => {
-        setSites((prev) => prev.filter((s) => !ids.includes(s.id)));
-        success(`נמחקו ${ids.length} אתרים`);
-      },
-    },
+    { label: "השהה", onClick: handleBulkPause },
+    { label: "מחק",  variant: "destructive", onClick: handleBulkDelete },
   ];
 
   return (
@@ -382,13 +412,7 @@ export function SitesCollection({ initialData }: { initialData: Site[] }) {
         record={selected as unknown as Record<string, unknown>}
         fields={PANEL_FIELDS}
         onSave={handleSave}
-        onDelete={() => {
-          if (selected) {
-            setSites((prev) => prev.filter((s) => s.id !== selected.id));
-            success("האתר נמחק");
-            setPanelOpen(false);
-          }
-        }}
+        onDelete={() => selected && handleDelete(selected)}
         activityLog={[]}
       />
     </>
