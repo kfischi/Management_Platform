@@ -3,12 +3,13 @@
 import * as React from "react";
 import {
   Users, Shield, UserCheck, Edit3, Mail, Building2,
-  Calendar, Hash, User, Phone, Globe,
+  Calendar, Hash, User, Phone, Globe, UserPlus, Loader2, X,
 } from "lucide-react";
 import { CollectionView, ColDef, BulkAction } from "@/components/admin/collection-view";
 import { RecordPanel, FieldDef, ActivityEntry } from "@/components/admin/record-panel";
 import { useToast } from "@/components/admin/toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 
 /* ─────────── types ─────────── */
 
@@ -143,6 +144,85 @@ const PANEL_FIELDS: FieldDef[] = [
   { key: "id",         label: "מזהה",           type: "readonly", icon: <Hash className="h-3.5 w-3.5" />,    section: "מטא-דאטה", readonly: true, copyable: true },
 ];
 
+/* ─────────── InviteModal ─────────── */
+
+function InviteModal({ open, onClose, onInvited }: { open: boolean; onClose: () => void; onInvited: (p: Profile) => void }) {
+  const [form, setForm] = React.useState({ email: "", full_name: "", company: "", phone: "" });
+  const [loading, setLoading] = React.useState(false);
+  const [err, setErr] = React.useState<string | null>(null);
+  const { success, error: toastErr } = useToast();
+
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm(prev => ({ ...prev, [k]: e.target.value }));
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.email || !form.full_name) { setErr("אימייל ושם מלא הם שדות חובה"); return; }
+    setLoading(true); setErr(null);
+    const res = await fetch("/api/admin/invite-client", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    setLoading(false);
+    if (res.ok) {
+      const { profile } = await res.json();
+      success("הזמנה נשלחה בהצלחה!");
+      onInvited(profile as Profile);
+      onClose();
+      setForm({ email: "", full_name: "", company: "", phone: "" });
+    } else {
+      const { error } = await res.json();
+      setErr(error ?? "שגיאה בשליחת הזמנה"); toastErr("שגיאה");
+    }
+  }
+
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+      <div className="w-full max-w-md rounded-2xl border bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b px-5 py-4">
+          <div className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5 text-primary" />
+            <h3 className="font-semibold">הזמן לקוח חדש</h3>
+          </div>
+          <button onClick={onClose} className="rounded-md p-1 hover:bg-accent transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <form onSubmit={submit} className="p-5 space-y-3">
+          {err && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 border border-red-200">{err}</p>}
+          {[
+            { key: "email" as const,     label: "אימייל *",  placeholder: "client@example.com", type: "email" },
+            { key: "full_name" as const, label: "שם מלא *",  placeholder: "ישראל ישראלי",       type: "text"  },
+            { key: "company" as const,   label: "חברה",       placeholder: "שם החברה",           type: "text"  },
+            { key: "phone" as const,     label: "טלפון",      placeholder: "050-0000000",         type: "tel"   },
+          ].map(f => (
+            <div key={f.key} className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">{f.label}</label>
+              <input
+                type={f.type}
+                value={form[f.key]}
+                onChange={set(f.key)}
+                placeholder={f.placeholder}
+                className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+          ))}
+          <p className="text-xs text-muted-foreground">הלקוח יקבל אימייל הזמנה עם קישור להגדרת סיסמה.</p>
+          <div className="flex gap-2 pt-1">
+            <Button type="submit" className="flex-1 gap-2" disabled={loading}>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+              שלח הזמנה
+            </Button>
+            <Button type="button" variant="outline" onClick={onClose}>ביטול</Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 /* ─────────── component ─────────── */
 
 export function UsersCollection({ initialData }: { initialData: Profile[] }) {
@@ -150,6 +230,7 @@ export function UsersCollection({ initialData }: { initialData: Profile[] }) {
   const [users, setUsers] = React.useState<Profile[]>(data);
   const [panelOpen, setPanelOpen] = React.useState(false);
   const [selected, setSelected] = React.useState<Profile | null>(null);
+  const [inviteOpen, setInviteOpen] = React.useState(false);
   const { success } = useToast();
 
   /* Role stats */
@@ -193,6 +274,12 @@ export function UsersCollection({ initialData }: { initialData: Profile[] }) {
 
   return (
     <>
+      <InviteModal
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        onInvited={(p) => setUsers(prev => [p, ...prev])}
+      />
+
       {/* Role summary */}
       <div className="flex items-center gap-3 mb-5 flex-wrap">
         {(Object.entries(ROLE_CFG) as [string, typeof ROLE_CFG["admin"]][]).map(([role, cfg]) => {
@@ -228,21 +315,8 @@ export function UsersCollection({ initialData }: { initialData: Profile[] }) {
         columns={COLUMNS as unknown as ColDef<Record<string, unknown>>[]}
         keyField="id"
         onRowClick={(row) => { setSelected(row as unknown as Profile); setPanelOpen(true); }}
-        onNew={() => {
-          setSelected({
-            id: crypto.randomUUID(),
-            full_name: "",
-            email: "",
-            avatar_url: null,
-            role: "client",
-            company: null,
-            phone: null,
-            website: null,
-            created_at: new Date().toISOString(),
-          });
-          setPanelOpen(true);
-        }}
-        newLabel="הזמן משתמש"
+        onNew={() => setInviteOpen(true)}
+        newLabel="הזמן לקוח"
         bulkActions={bulkActions}
         filterFields={[
           { key: "full_name", label: "שם" },

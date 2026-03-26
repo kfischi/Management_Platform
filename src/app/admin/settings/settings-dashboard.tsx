@@ -76,6 +76,7 @@ export function SettingsDashboard({ initialSettings }: { initialSettings: Settin
   const whatsapp = useSave(["whatsapp_token","whatsapp_phone"], s, setS);
   const ai       = useSave(["claude_api_key","openai_api_key","ai_provider"], s, setS);
   const resend   = useSave(["resend_api_key"], s, setS);
+  const coolify  = useSave(["coolify_url","coolify_token"], s, setS);
   const agency   = useSave(["agency_name","agency_email","agency_phone","agency_logo","brand_color","whatsapp_phone"], s, setS);
 
   function SaveBtn({ hook }: { hook: ReturnType<typeof useSave> }) {
@@ -229,6 +230,29 @@ export function SettingsDashboard({ initialSettings }: { initialSettings: Settin
                 <SecretInput value={s.resend_api_key ?? ""} onChange={set("resend_api_key")} placeholder="re_••••••••" />
               </div>
               <SaveBtn hook={resend} />
+            </CardContent>
+          </Card>
+
+          {/* Coolify */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                🖥️ Coolify <Connected connected={!!s.coolify_url && !!s.coolify_token} />
+              </CardTitle>
+              <CardDescription>ניהול שרתים ו-containers</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label>Coolify URL</Label>
+                  <Input value={s.coolify_url ?? ""} onChange={e => set("coolify_url")(e.target.value)} placeholder="https://coolify.yourdomain.com" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>API Token</Label>
+                  <SecretInput value={s.coolify_token ?? ""} onChange={set("coolify_token")} placeholder="eyJ••••••••" />
+                </div>
+              </div>
+              <SaveBtn hook={coolify} />
             </CardContent>
           </Card>
         </TabsContent>

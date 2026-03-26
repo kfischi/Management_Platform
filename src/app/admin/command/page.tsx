@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Brain, Send, Zap, ChevronLeft, Loader2, Command, Sparkles } from "lucide-react";
+import { Brain, Send, Loader2, Command, Sparkles, AlertCircle } from "lucide-react";
 
 interface Message {
   id: string;
@@ -32,15 +32,14 @@ const exampleCommands = [
   "שלח דו״ח שבועי לכל הלקוחות על האתר שלהם",
 ];
 
-const mockResponses: Record<string, { content: string; actions?: CommandAction[] }> = {
-  default: {
-    content: "ביצעתי את הפקודה! הנה מה שעשיתי:",
-    actions: [
-      { label: "פתח בN8N", icon: "⚡", type: "n8n" },
-      { label: "צפה בתוצאות", icon: "👁", type: "report" },
-    ]
-  }
-};
+const COMMAND_SYSTEM = `You are an AI Command Center for a digital agency management platform called WMA Agency Platform.
+You help the admin manage clients, sites, deployments, leads, payments, and automations via natural language in Hebrew or English.
+You are proactive, concise, and action-oriented. When asked to do something:
+1. Explain what you found / what you will do in 2-3 lines
+2. List any relevant data points (clients, amounts, sites) with bullet points
+3. Suggest 2-3 concrete next actions with emoji labels
+4. Always respond in the same language as the user (Hebrew/English)
+You do NOT have direct API access in this demo, but you should respond as if you do and suggest the actions clearly.`;
 
 export default function CommandCenterPage() {
   const [messages, setMessages] = useState<Message[]>([
@@ -53,78 +52,12 @@ export default function CommandCenterPage() {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  const parseCommand = (text: string): { content: string; actions?: CommandAction[] } => {
-    const lower = text.toLowerCase();
-
-    if (lower.includes("whatsapp") || lower.includes("שלח")) {
-      return {
-        content: `מעולה! זיהיתי פקודת שליחת WhatsApp. בדקתי את הנתונים:\n\n• מצאתי 3 לקוחות עם תשלום פתוח החודש\n• יוסי כהן - ₪2,400 (איחור של 5 ימים)\n• שרה לוי - ₪1,800 (איחור של 2 ימים)\n• דוד מזרחי - ₪3,200 (איחור של יום)\n\nהפעלתי את workflow "תזכורת תשלום" ב-N8N. ההודעות ישלחו תוך 30 שניות.`,
-        actions: [
-          { label: "אשר שליחה (3 הודעות)", icon: "✅", type: "whatsapp" },
-          { label: "בטל", icon: "❌", type: "n8n" },
-          { label: "ערוך הודעה", icon: "✏️", type: "create" },
-        ]
-      };
-    }
-
-    if (lower.includes("דוח") || lower.includes("report") || lower.includes("הכנסות")) {
-      return {
-        content: `יצרתי דוח הכנסות מלא:\n\n📊 **סיכום החודש**\n• סה״כ הכנסות: ₪47,850\n• שולם: ₪38,200 (79.8%)\n• ממתין: ₪9,650 (20.2%)\n• לקוחות חדשים: 4\n• לקוחות שחידשו: 7\n\n📈 שינוי לעומת חודש קודם: +23%`,
-        actions: [
-          { label: "הורד PDF", icon: "📄", type: "report" },
-          { label: "שלח לאימייל", icon: "📧", type: "email" },
-          { label: "שתף בדשבורד", icon: "📊", type: "report" },
-        ]
-      };
-    }
-
-    if (lower.includes("deploy") || lower.includes("error")) {
-      return {
-        content: `בדקתי את כל האתרים. מצאתי 2 אתרים בסטטוס error:\n\n🔴 **client-store.co.il** - build error: package version conflict\n🔴 **agency-site.com** - deploy failed: environment variable missing\n\nהכנתי fix אוטומטי לשני האתרים. רוצה שאריץ?`,
-        actions: [
-          { label: "תקן והפעל deploy", icon: "🚀", type: "deploy" },
-          { label: "פרטים נוספים", icon: "🔍", type: "report" },
-          { label: "פנה ל-Coolify", icon: "🖥️", type: "n8n" },
-        ]
-      };
-    }
-
-    if (lower.includes("לידים") || lower.includes("חמים")) {
-      return {
-        content: `הנה 5 הלידים הכי חמים לפי AI Score:\n\n1. 🔥 **אבי גולדברג** (92) - רוצה ecommerce, תקציב גבוה - **התקשר עכשיו!**\n2. 🔥 **יוסי מזרחי** (85) - חיכה להצעה 3 ימים - **שלח follow-up**\n3. 🌡️ **מיכל לב** (78) - נכנסה לאתר 4 פעמים - **חמה מאוד**\n4. 🌡️ **ראובן כהן** (71) - LinkedIn - ב2b טוב\n5. 💛 **תמר שפר** (65) - ממתינה להצעה`,
-        actions: [
-          { label: "שלח WhatsApp לטופ 3", icon: "💬", type: "whatsapp" },
-          { label: "צור קמפיין email", icon: "📧", type: "email" },
-          { label: "פתח Kanban", icon: "📋", type: "report" },
-        ]
-      };
-    }
-
-    if (lower.includes("שרתים") || lower.includes("סטטוס")) {
-      return {
-        content: `סקנתי את כל התשתיות:\n\n🟢 **Production Server** (10.0.0.1) - תקין | CPU: 23% | RAM: 45% | Disk: 34%\n🟢 **Dev Server** (10.0.0.2) - תקין | CPU: 8% | RAM: 31% | Disk: 67%\n\n📦 **Containers**: 12/14 פעילים\n⚠️ 2 containers בסטטוס stopped:\n• postgres-backup - הופסק ידנית\n• redis-cache - crashed לפני שעה (auto-restart כשל)\n\n💡 AI מציע: הפעל מחדש את redis-cache עכשיו`,
-        actions: [
-          { label: "הפעל redis-cache", icon: "▶️", type: "deploy" },
-          { label: "פתח Coolify", icon: "🖥️", type: "n8n" },
-          { label: "הגדר monitor", icon: "👁️", type: "n8n" },
-        ]
-      };
-    }
-
-    return {
-      content: `מעולה! מבין את הפקודה: "${text}"\n\nבודק את הנתונים הרלוונטיים ומכין פלן פעולה...\n\n✅ זיהיתי 3 צעדים לביצוע\n⚡ מפעיל N8N workflow מתאים\n📊 אאסוף נתונים ואחזור עם עדכון`,
-      actions: [
-        { label: "ראה פרטים", icon: "🔍", type: "report" },
-        { label: "בצע עכשיו", icon: "⚡", type: "n8n" },
-      ]
-    };
-  };
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
@@ -136,24 +69,38 @@ export default function CommandCenterPage() {
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput("");
     setLoading(true);
+    setError(null);
 
-    // Simulate AI processing
-    await new Promise(resolve => setTimeout(resolve, 1200));
+    // Build payload for AI — only role+content, no extra fields
+    const payload = updatedMessages.map(m => ({ role: m.role, content: m.content }));
 
-    const response = parseCommand(input);
-    const assistantMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      role: "assistant",
-      content: response.content,
-      actions: response.actions,
-      timestamp: new Date(),
-    };
+    try {
+      const res = await fetch("/api/admin/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: payload,
+          model: "claude-opus-4-6",
+          system: COMMAND_SYSTEM,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "שגיאה");
 
-    setMessages(prev => [...prev, assistantMessage]);
-    setLoading(false);
+      setMessages(prev => [
+        ...prev,
+        { id: (Date.now() + 1).toString(), role: "assistant", content: data.content, timestamp: new Date() },
+      ]);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "שגיאה";
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -251,6 +198,14 @@ export default function CommandCenterPage() {
                 </div>
               </div>
             )}
+            {error && (
+              <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {error.includes("not configured") ? (
+                  <span>הגדר Claude API Key ב<a href="/admin/settings" className="underline font-medium">הגדרות → AI</a> כדי להשתמש ב-AI אמיתי.</span>
+                ) : error}
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
 
@@ -278,7 +233,7 @@ export default function CommandCenterPage() {
                 <textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                   placeholder="הקלד פקודה בעברית... (לדוגמה: שלח WhatsApp לכל הלקוחות)"
                   rows={1}
                   className="flex-1 bg-transparent text-sm resize-none focus:outline-none"
