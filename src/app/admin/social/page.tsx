@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Plus, Send, Calendar, Image, Video, Link2,
   Edit, Trash2, Eye, Clock, CheckCircle2, TrendingUp,
-  Users, Heart, MessageSquare, Share2
+  Heart, MessageSquare, Share2, Loader2
 } from "lucide-react";
 
 const platforms = [
@@ -59,9 +59,31 @@ const analytics = [
   { platform: "Twitter/X", reach: "3.1K", engagement: "1.9%", followers: "+12", icon: "🐦" },
 ];
 
+interface SocialPost {
+  id: string;
+  content: string;
+  platforms: string[];
+  post_type: string;
+  status: string;
+  scheduled_at: string | null;
+  image_url: string | null;
+  created_at: string;
+}
+
 export default function SocialMediaPage() {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["facebook", "instagram", "linkedin"]);
   const [postContent, setPostContent] = useState("");
+  const [posts, setPosts] = useState<SocialPost[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState("");
+
+  useEffect(() => {
+    fetch("/api/admin/social")
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setPosts(data); })
+      .finally(() => setLoadingPosts(false));
+  }, []);
 
   const togglePlatform = (id: string) => {
     setSelectedPlatforms(prev =>
@@ -69,7 +91,35 @@ export default function SocialMediaPage() {
     );
   };
 
+  async function savePost(status: "draft" | "scheduled" | "published") {
+    if (!postContent.trim() || selectedPlatforms.length === 0) return;
+    setSaving(true);
+    const res = await fetch("/api/admin/social", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        content: postContent,
+        platforms: selectedPlatforms,
+        status,
+        scheduled_at: scheduleDate ? new Date(scheduleDate).toISOString() : null,
+      }),
+    });
+    if (res.ok) {
+      const newPost = await res.json();
+      setPosts(prev => [newPost, ...prev]);
+      setPostContent("");
+      setScheduleDate("");
+    }
+    setSaving(false);
+  }
+
+  async function deletePost(id: string) {
+    await fetch(`/api/admin/social/${id}`, { method: "DELETE" });
+    setPosts(prev => prev.filter(p => p.id !== id));
+  }
+
   const connectedCount = platforms.filter(p => p.connected).length;
+  const scheduledCount = posts.filter(p => p.status === "scheduled").length;
 
   return (
     <div className="space-y-6">
@@ -77,7 +127,7 @@ export default function SocialMediaPage() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">ניהול רשתות חברתיות</h2>
           <p className="text-muted-foreground">
-            {connectedCount} פלטפורמות מחוברות · {scheduledPosts.filter(p => p.status === "scheduled").length} פוסטים מתוזמנים
+            {connectedCount} פלטפורמות מחוברות · {scheduledCount} פוסטים מתוזמנים
           </p>
         </div>
         <Button className="gap-2">
@@ -189,15 +239,43 @@ export default function SocialMediaPage() {
                   </Button>
                 </div>
 
+                {/* Schedule date */}
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <input
+                    type="datetime-local"
+                    value={scheduleDate}
+                    onChange={e => setScheduleDate(e.target.value)}
+                    className="flex-1 rounded-lg border px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+
                 {/* Actions */}
                 <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1 gap-2">
-                    <Calendar className="h-4 w-4" />
+                  <Button
+                    variant="outline"
+                    className="flex-1 gap-2"
+                    disabled={!postContent.trim() || !scheduleDate || saving}
+                    onClick={() => savePost("scheduled")}
+                  >
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calendar className="h-4 w-4" />}
                     תזמן
                   </Button>
-                  <Button className="flex-1 gap-2" disabled={!postContent || selectedPlatforms.length === 0}>
-                    <Send className="h-4 w-4" />
+                  <Button
+                    className="flex-1 gap-2"
+                    disabled={!postContent.trim() || selectedPlatforms.length === 0 || saving}
+                    onClick={() => savePost("published")}
+                  >
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                     פרסם עכשיו ({selectedPlatforms.length})
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="gap-2"
+                    disabled={!postContent.trim() || saving}
+                    onClick={() => savePost("draft")}
+                  >
+                    שמור טיוטה
                   </Button>
                 </div>
               </CardContent>
@@ -252,56 +330,59 @@ export default function SocialMediaPage() {
 
         {/* Scheduled */}
         <TabsContent value="scheduled" className="mt-4">
-          <div className="space-y-3">
-            {scheduledPosts.map((post) => (
-              <Card key={post.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <div className={`flex h-9 w-9 items-center justify-center rounded-lg shrink-0 ${
-                      post.status === "scheduled" ? "bg-blue-50" : "bg-gray-50"
-                    }`}>
-                      {post.status === "scheduled"
-                        ? <Clock className="h-4 w-4 text-blue-600" />
-                        : <Edit className="h-4 w-4 text-gray-500" />
-                      }
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm line-clamp-2">{post.content}</p>
-                      <div className="flex flex-wrap items-center gap-2 mt-2">
-                        <div className="flex gap-1">
-                          {post.platforms.map(id => (
-                            <span key={id} className="text-base">{platformIcons[id]}</span>
-                          ))}
+          {loadingPosts ? (
+            <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground/40" /></div>
+          ) : posts.length === 0 ? (
+            <div className="text-center py-12 text-sm text-muted-foreground">אין פוסטים עדיין — צור פוסט ראשון!</div>
+          ) : (
+            <div className="space-y-3">
+              {posts.map((post) => (
+                <Card key={post.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className={`flex h-9 w-9 items-center justify-center rounded-lg shrink-0 ${
+                        post.status === "scheduled" ? "bg-blue-50" : post.status === "published" ? "bg-green-50" : "bg-gray-50"
+                      }`}>
+                        {post.status === "scheduled"
+                          ? <Clock className="h-4 w-4 text-blue-600" />
+                          : post.status === "published"
+                          ? <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          : <Edit className="h-4 w-4 text-gray-500" />
+                        }
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm line-clamp-2">{post.content}</p>
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          <div className="flex gap-1">
+                            {post.platforms.map(id => (
+                              <span key={id} className="text-base">{platformIcons[id]}</span>
+                            ))}
+                          </div>
+                          {post.scheduled_at && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {new Date(post.scheduled_at).toLocaleString("he-IL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          )}
+                          <Badge
+                            variant={post.status === "scheduled" ? "info" : post.status === "published" ? "success" : "secondary"}
+                            className="text-xs"
+                          >
+                            {post.status === "scheduled" ? "מתוזמן" : post.status === "published" ? "פורסם" : "טיוטה"}
+                          </Badge>
                         </div>
-                        {post.image && <Badge variant="secondary" className="text-xs">📷 תמונה</Badge>}
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {post.scheduledFor}
-                        </span>
-                        <Badge
-                          variant={post.status === "scheduled" ? "info" : "secondary"}
-                          className="text-xs"
-                        >
-                          {post.status === "scheduled" ? "מתוזמן" : "טיוטה"}
-                        </Badge>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500 hover:text-red-600" onClick={() => deletePost(post.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex gap-1 shrink-0">
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
-                        <Eye className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
-                        <Edit className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500 hover:text-red-600">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         {/* Analytics */}

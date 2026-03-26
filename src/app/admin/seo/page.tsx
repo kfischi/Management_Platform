@@ -100,12 +100,52 @@ export default function SEOPage() {
   const [url, setUrl] = useState("https://example-client.co.il");
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<SEOReport | null>(mockReport);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const handleAnalyze = async () => {
+    if (!url.trim()) return;
     setLoading(true);
-    await new Promise(r => setTimeout(r, 2500));
-    setReport(mockReport);
-    setLoading(false);
+    setApiError(null);
+    try {
+      const res = await fetch("/api/admin/seo/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "שגיאה בניתוח");
+
+      // Map PageSpeed response to SEOReport shape
+      const mapped: SEOReport = {
+        url: data.url,
+        score: data.seo ?? 0,
+        performance: data.score ?? 0,
+        accessibility: data.accessibility ?? 0,
+        bestPractices: data.bestPractices ?? 0,
+        issues: (data.issues ?? []).filter((i: { passed: boolean }) => !i.passed).map((i: { title: string; description: string; impact: string }) => ({
+          type: i.impact === "high" ? "error" : i.impact === "medium" ? "warning" : "info",
+          category: "PageSpeed",
+          title: i.title,
+          description: i.description,
+          impact: (i.impact as "high" | "medium" | "low") || "low",
+          fix: i.description,
+        })),
+        keywords: [],
+        backlinks: 0,
+        loadTime: 0,
+        mobileScore: data.score ?? 0,
+        aiSummary: `SEO score: ${data.seo ?? 0}/100 · Performance: ${data.score ?? 0}/100 · Accessibility: ${data.accessibility ?? 0}/100`,
+        recommendations: (data.issues ?? []).filter((i: { passed: boolean; impact: string }) => !i.passed && i.impact === "high").slice(0, 5).map((i: { title: string }) => i.title),
+      };
+      setReport(mapped);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "שגיאה";
+      setApiError(msg);
+      // Fallback to mock report so UI still shows
+      setReport(mockReport);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const issueIcon = { error: <XCircle className="h-4 w-4 text-red-500" />, warning: <AlertTriangle className="h-4 w-4 text-yellow-500" />, info: <CheckCircle2 className="h-4 w-4 text-blue-500" /> };
@@ -126,6 +166,13 @@ export default function SEOPage() {
           Powered by AI
         </Badge>
       </div>
+
+      {/* API Error */}
+      {apiError && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          ⚠️ {apiError} — מציג נתוני דוגמה
+        </div>
+      )}
 
       {/* URL Input */}
       <Card>
