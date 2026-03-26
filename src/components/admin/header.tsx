@@ -53,17 +53,22 @@ interface Notification {
   type: "success" | "warning" | "info" | "error";
   title: string;
   body: string;
-  time: string;
   read: boolean;
+  created_at: string;
+  link?: string | null;
 }
 
-const MOCK_NOTIFICATIONS: Notification[] = [
-  { id: "n1", type: "error",   title: "תשלום באיחור",   body: "שפירא לוגיסטיקס — ₪25,000 באיחור של 24 ימים", time: "לפני שעה",    read: false },
-  { id: "n2", type: "success", title: "Deploy הצליח",   body: "טק סולושנס — v2.3.1 עלה לאוויר בהצלחה",       time: "לפני 2 שעות", read: false },
-  { id: "n3", type: "warning", title: "SSL עומד לפוג",  body: "cohen-marketing.co.il — פג עוד 12 יום",        time: "לפני 5 שעות", read: false },
-  { id: "n4", type: "info",    title: "ליד חדש",        body: "נרשם ליד חדש דרך האתר: startup@example.com",   time: "אתמול",        read: true },
-  { id: "n5", type: "success", title: "תשלום התקבל",   body: "כהן מרקטינג — ₪2,000 שולמו",                  time: "לפני יומיים", read: true },
-];
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1)  return "עכשיו";
+  if (m < 60) return `לפני ${m} דק׳`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `לפני ${h} שע׳`;
+  const d = Math.floor(h / 24);
+  if (d < 7)  return `לפני ${d} ימים`;
+  return new Date(iso).toLocaleDateString("he-IL", { day: "numeric", month: "short" });
+}
 
 const NOTIF_ICONS: Record<string, React.ReactNode> = {
   success: <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />,
@@ -88,7 +93,8 @@ export function AdminHeader({ title, userEmail, userAvatar, userName }: AdminHea
   const supabase = createClient();
   const breadcrumbs = useBreadcrumbs();
   const [notifOpen, setNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifLoaded, setNotifLoaded] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -103,8 +109,19 @@ export function AdminHeader({ title, userEmail, userAvatar, userName }: AdminHea
     ? userName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
     : userEmail?.slice(0, 2).toUpperCase() ?? "AD";
 
-  const markAllRead = () =>
+  async function loadNotifications() {
+    if (notifLoaded) return;
+    try {
+      const res = await fetch("/api/client/notifications");
+      if (res.ok) setNotifications(await res.json());
+    } catch { /* silent */ }
+    setNotifLoaded(true);
+  }
+
+  async function markAllRead() {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    await fetch("/api/client/notifications", { method: "PATCH" });
+  }
 
   const dismiss = (id: string) =>
     setNotifications((prev) => prev.filter((n) => n.id !== id));
@@ -116,6 +133,11 @@ export function AdminHeader({ title, userEmail, userAvatar, userName }: AdminHea
     document.addEventListener("mousedown", onClickOut);
     return () => document.removeEventListener("mousedown", onClickOut);
   }, []);
+
+  function handleBellClick() {
+    setNotifOpen((v) => !v);
+    if (!notifLoaded) loadNotifications();
+  }
 
   return (
     <>
@@ -167,7 +189,7 @@ export function AdminHeader({ title, userEmail, userAvatar, userName }: AdminHea
               variant="ghost"
               size="icon"
               className="relative h-8 w-8"
-              onClick={() => setNotifOpen((v) => !v)}
+              onClick={handleBellClick}
             >
               <Bell className="h-4 w-4" />
               {unreadCount > 0 && (
@@ -218,7 +240,7 @@ export function AdminHeader({ title, userEmail, userAvatar, userName }: AdminHea
                             {n.title}
                           </p>
                           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.body}</p>
-                          <p className="text-[10px] text-muted-foreground/60 mt-0.5">{n.time}</p>
+                          <p className="text-[10px] text-muted-foreground/60 mt-0.5">{relativeTime(n.created_at)}</p>
                         </div>
                         {!n.read && (
                           <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 shrink-0 mt-2" />

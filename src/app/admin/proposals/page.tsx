@@ -59,11 +59,18 @@ const aiInsights = [
   "הצע תשלום בשלושה חלקים - מגדיל סגירה ב-34%",
 ];
 
+interface SavedProposal { id: string; client_name: string; total_amount: number; status: string; created_at: string }
+
 export default function ProposalsPage() {
   const [step, setStep] = useState<"input" | "preview" | "sent">("input");
   const [loading, setLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [showInsights, setShowInsights] = useState(false);
+  const [savedProposals, setSavedProposals] = useState<SavedProposal[]>([]);
+  const [savedId, setSavedId] = useState<string | null>(null);
+
+  // Load recent proposals on mount
+  useState(() => { fetch("/api/admin/proposals").then(r => r.json()).then(d => setSavedProposals(d.slice(0,5))).catch(() => {}); });
 
   const [proposal, setProposal] = useState<ProposalData>({
     clientName: "",
@@ -96,10 +103,53 @@ export default function ProposalsPage() {
   };
 
   const handleSend = async () => {
+    if (!proposal.clientName || !proposal.clientEmail) return;
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1500));
-    setStep("sent");
+    try {
+      const res = await fetch(
+        savedId ? `/api/admin/proposals/${savedId}` : "/api/admin/proposals",
+        {
+          method: savedId ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            client_name: proposal.clientName,
+            client_company: proposal.clientCompany,
+            client_email: proposal.clientEmail,
+            project_name: proposal.projectName,
+            project_type: proposal.projectType,
+            services: proposal.services,
+            valid_days: proposal.validDays,
+            notes: proposal.notes,
+            status: "sent",
+          }),
+        }
+      );
+      if (res.ok) {
+        const saved = await res.json();
+        setSavedId(saved.id);
+        setSavedProposals(prev => [saved, ...prev.filter(p => p.id !== saved.id)].slice(0,5));
+      }
+    } catch { /* silent */ }
     setLoading(false);
+    setStep("sent");
+  };
+
+  const handleSaveDraft = async () => {
+    if (!proposal.clientName) return;
+    const res = await fetch(
+      savedId ? `/api/admin/proposals/${savedId}` : "/api/admin/proposals",
+      {
+        method: savedId ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_name: proposal.clientName, client_company: proposal.clientCompany,
+          client_email: proposal.clientEmail, project_name: proposal.projectName,
+          project_type: proposal.projectType, services: proposal.services,
+          valid_days: proposal.validDays, notes: proposal.notes, status: "draft",
+        }),
+      }
+    );
+    if (res.ok) { const saved = await res.json(); setSavedId(saved.id); setSavedProposals(prev => [saved, ...prev.filter(p => p.id !== saved.id)].slice(0,5)); }
   };
 
   const updateService = (id: string, field: keyof ServiceLine, value: string | number) => {
@@ -345,9 +395,9 @@ export default function ProposalsPage() {
             </Card>
 
             <div className="flex gap-3">
-              <Button variant="outline" className="flex-1 gap-2">
+              <Button variant="outline" className="gap-2" onClick={handleSaveDraft} disabled={!proposal.clientName}>
                 <Download className="h-4 w-4" />
-                הורד PDF
+                שמור טיוטה
               </Button>
               <Button
                 className="flex-1 gap-2"
@@ -415,24 +465,25 @@ export default function ProposalsPage() {
             {/* Previous Proposals */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">הצעות אחרונות</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm">הצעות אחרונות</CardTitle>
+                  {savedId && <span className="text-[10px] text-green-600 font-medium bg-green-50 border border-green-200 rounded px-1.5 py-0.5">נשמר</span>}
+                </div>
               </CardHeader>
-              <CardContent className="space-y-2">
-                {[
-                  { name: "חנות פלאפל", amount: "₪24,500", status: "ממתין", days: 3 },
-                  { name: "TechStartup", amount: "₪18,200", status: "נחתם ✓", days: 8 },
-                  { name: "Fashion Brand", amount: "₪12,800", status: "פג תוקף", days: 16 },
-                ].map((p) => (
-                  <div key={p.name} className="flex items-center justify-between text-xs py-1.5 border-b last:border-0">
-                    <span className="font-medium">{p.name}</span>
-                    <div className="text-right">
-                      <div className="font-semibold">{p.amount}</div>
-                      <div className={`${p.status.includes("✓") ? "text-green-600" : "text-muted-foreground"}`}>
-                        {p.status}
+              <CardContent className="space-y-0">
+                {savedProposals.length === 0 && <p className="text-xs text-muted-foreground">אין הצעות שמורות</p>}
+                {savedProposals.map((p) => {
+                  const statusMap: Record<string,string> = { draft: "טיוטה", sent: "נשלח", viewed: "נצפה", accepted: "נחתם ✓", declined: "נדחה" };
+                  return (
+                    <div key={p.id} className="flex items-center justify-between text-xs py-1.5 border-b last:border-0">
+                      <span className="font-medium truncate max-w-[100px]">{p.client_name}</span>
+                      <div className="text-right">
+                        <div className="font-semibold">₪{p.total_amount.toLocaleString()}</div>
+                        <div className={p.status === "accepted" ? "text-green-600" : "text-muted-foreground"}>{statusMap[p.status] ?? p.status}</div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </CardContent>
             </Card>
           </div>
