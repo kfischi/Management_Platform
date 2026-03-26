@@ -18,7 +18,7 @@ export interface BadgeOption {
 export interface FieldDef {
   key: string;
   label: string;
-  type: "text" | "textarea" | "number" | "date" | "url" | "readonly" | "badge";
+  type: "text" | "textarea" | "number" | "date" | "url" | "readonly" | "badge" | "email" | "tel";
   section?: string;
   icon?: React.ReactNode;
   placeholder?: string;
@@ -315,7 +315,7 @@ function FieldInput({
       ) : (
         <div className="relative flex items-center">
           <input
-            type={field.type === "number" ? "number" : field.type === "date" ? "date" : field.type === "url" ? "url" : "text"}
+            type={field.type === "number" ? "number" : field.type === "date" ? "date" : field.type === "url" ? "url" : field.type === "email" ? "email" : field.type === "tel" ? "tel" : "text"}
             value={strVal}
             onChange={(e) => onChange(field.type === "number" ? Number(e.target.value) : e.target.value)}
             disabled={isReadonly}

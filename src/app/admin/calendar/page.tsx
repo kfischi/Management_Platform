@@ -159,9 +159,6 @@ export default function CalendarPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setView(view === "month" ? "week" : "month")}>
-            {view === "month" ? "שבועי" : "חודשי"}
-          </Button>
           <Button className="gap-2" onClick={() => setShowNewPost(true)}>
             <Plus className="h-4 w-4" />
             פוסט חדש
@@ -294,7 +291,7 @@ export default function CalendarPage() {
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-1.5">
                               <Clock className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-xs font-medium">{post.time}</span>
+                              <span className="text-xs font-medium">{post.scheduled_at ? new Date(post.scheduled_at).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }) : "—"}</span>
                               <span className="text-xs text-muted-foreground">{typeIcons[post.post_type]}</span>
                             </div>
                             <Badge

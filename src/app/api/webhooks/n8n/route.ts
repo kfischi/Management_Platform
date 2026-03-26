@@ -34,8 +34,7 @@ export async function POST(req: NextRequest) {
 
     // Update automation last_run
     await supabase.from("automations").update({
-      last_run: new Date().toISOString(),
-      run_count: supabase.rpc ? undefined : undefined, // increment handled separately
+      last_run_at: new Date().toISOString(),
     }).eq("id", automation_id);
   }
 

@@ -13,6 +13,7 @@ export interface ColDef<T = Record<string, unknown>> {
   key: keyof T & string;
   title: string;
   sortable?: boolean;
+  hidden?: boolean;
   width?: string;
   render?: (value: unknown, row: T) => React.ReactNode;
 }

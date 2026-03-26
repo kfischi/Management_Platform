@@ -8,6 +8,12 @@ export type Json =
 
 export type UserRole = "admin" | "client" | "editor";
 export type SiteStatus = "active" | "building" | "error" | "paused";
+export type LeadStatus = "new" | "contacted" | "qualified" | "proposal" | "won" | "lost";
+export type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
+export type TicketPriority = "low" | "normal" | "high" | "urgent";
+export type ProposalStatus = "draft" | "sent" | "viewed" | "accepted" | "declined";
+export type SocialPostStatus = "draft" | "scheduled" | "published" | "failed";
+export type DomainStatus = "active" | "expiring" | "expired" | "error";
 export type BlockType =
   | "hero"
   | "text"
@@ -240,12 +246,157 @@ export interface Database {
         Insert: Omit<Database["public"]["Tables"]["site_settings"]["Row"], "id" | "updated_at">;
         Update: Partial<Database["public"]["Tables"]["site_settings"]["Insert"]>;
       };
+      leads: {
+        Row: {
+          id: string;
+          name: string;
+          email: string | null;
+          phone: string | null;
+          company: string | null;
+          source: string | null;
+          status: LeadStatus;
+          score: number;
+          value: number | null;
+          tags: string[];
+          ai_insight: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["leads"]["Row"], "id" | "created_at" | "updated_at">;
+        Update: Partial<Database["public"]["Tables"]["leads"]["Insert"]>;
+      };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: string;
+          title: string;
+          body: string;
+          link: string | null;
+          read: boolean;
+          created_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["notifications"]["Row"], "id" | "created_at">;
+        Update: Partial<Database["public"]["Tables"]["notifications"]["Insert"]>;
+      };
+      support_tickets: {
+        Row: {
+          id: string;
+          client_id: string;
+          subject: string;
+          message: string;
+          status: TicketStatus;
+          priority: TicketPriority;
+          reply: string | null;
+          replied_by: string | null;
+          replied_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["support_tickets"]["Row"], "id" | "created_at" | "updated_at">;
+        Update: Partial<Database["public"]["Tables"]["support_tickets"]["Insert"]>;
+      };
+      proposals: {
+        Row: {
+          id: string;
+          client_name: string;
+          client_company: string | null;
+          client_email: string;
+          project_name: string;
+          project_type: string;
+          services: Json;
+          valid_days: number;
+          notes: string | null;
+          status: ProposalStatus;
+          total_amount: number;
+          sent_at: string | null;
+          viewed_at: string | null;
+          accepted_at: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["proposals"]["Row"], "id" | "created_at" | "updated_at">;
+        Update: Partial<Database["public"]["Tables"]["proposals"]["Insert"]>;
+      };
+      social_posts: {
+        Row: {
+          id: string;
+          content: string;
+          platforms: string[];
+          post_type: string;
+          status: SocialPostStatus;
+          scheduled_at: string | null;
+          published_at: string | null;
+          image_url: string | null;
+          tags: string[];
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["social_posts"]["Row"], "id" | "created_at" | "updated_at">;
+        Update: Partial<Database["public"]["Tables"]["social_posts"]["Insert"]>;
+      };
+      agency_settings: {
+        Row: {
+          key: string;
+          value: string | null;
+          updated_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["agency_settings"]["Row"], "updated_at">;
+        Update: Partial<Database["public"]["Tables"]["agency_settings"]["Insert"]>;
+      };
+      workflow_runs: {
+        Row: {
+          id: string;
+          automation_id: string;
+          status: string;
+          trigger_type: string;
+          trigger_data: Json | null;
+          output: Json | null;
+          n8n_execution_id: string | null;
+          duration_ms: number;
+          steps_total: number;
+          steps_done: number;
+          started_by: string | null;
+          started_at: string;
+          finished_at: string | null;
+          error_message: string | null;
+        };
+        Insert: Omit<Database["public"]["Tables"]["workflow_runs"]["Row"], "id">;
+        Update: Partial<Database["public"]["Tables"]["workflow_runs"]["Insert"]>;
+      };
+      domains: {
+        Row: {
+          id: string;
+          domain: string;
+          site_id: string | null;
+          registrar: string | null;
+          expires_at: string | null;
+          auto_renew: boolean;
+          ssl_enabled: boolean;
+          ssl_expires_at: string | null;
+          status: DomainStatus;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["domains"]["Row"], "id" | "created_at" | "updated_at">;
+        Update: Partial<Database["public"]["Tables"]["domains"]["Insert"]>;
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
     Enums: {
       user_role: UserRole;
       site_status: SiteStatus;
+      lead_status: LeadStatus;
+      ticket_status: TicketStatus;
+      ticket_priority: TicketPriority;
+      proposal_status: ProposalStatus;
+      social_post_status: SocialPostStatus;
+      domain_status: DomainStatus;
     };
   };
 }
