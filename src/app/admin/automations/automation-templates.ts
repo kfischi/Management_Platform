@@ -153,6 +153,187 @@ export const TEMPLATES: AutomationTemplate[] = [
       ],
     },
   },
+
+  /* ── Contract Expiry Alert ── */
+  {
+    id: "contract-expiry",
+    name: "התראת פקיעת חוזה",
+    description: "שלח התראה ל-WhatsApp + Email 30 ו-7 ימים לפני פקיעת חוזה לקוח.",
+    category: "CRM",
+    icon: "📄",
+    tags: ["CRM", "Contract", "WhatsApp", "Email"],
+    difficulty: "בינוני",
+    estimatedMinutes: 10,
+    workflow: {
+      nodes: [
+        { id: "n1", type: "trigger_schedule",     x: 80,  y: 200, config: { cron: "0 8 * * *", timezone: "Asia/Jerusalem" } },
+        { id: "n2", type: "action_http_request",  x: 340, y: 200, config: { method: "GET", url: "/api/admin/clients?contractExpiringSoon=true", headers: '{"x-internal":"1"}' } },
+        { id: "n3", type: "logic_condition",      x: 600, y: 200, config: { field: "{{client.days_to_expiry}}", operator: "in", value: "7,30" } },
+        { id: "n4", type: "action_send_email",    x: 860, y: 120, config: { to: "{{client.email}}", subject: "חוזה מסתיים בקרוב — {{client.name}}", body: "שלום {{client.name}},\n\nחוזה השירות שלך מסתיים בעוד {{client.days_to_expiry}} ימים.\nנשמח לחדש — צרו קשר בהקדם." } },
+        { id: "n5", type: "action_send_whatsapp", x: 860, y: 280, config: { to: "{{client.phone}}", message: "📋 שלום {{client.name}}, החוזה שלך מסתיים בעוד {{client.days_to_expiry}} ימים. נשמח לדבר על חידוש 🙏" } },
+      ],
+      edges: [
+        { id: "e1", sourceNodeId: "n1", sourcePort: "out",   targetNodeId: "n2", targetPort: "in" },
+        { id: "e2", sourceNodeId: "n2", sourcePort: "out",   targetNodeId: "n3", targetPort: "in" },
+        { id: "e3", sourceNodeId: "n3", sourcePort: "true",  targetNodeId: "n4", targetPort: "in" },
+        { id: "e4", sourceNodeId: "n3", sourcePort: "true",  targetNodeId: "n5", targetPort: "in" },
+      ],
+    },
+  },
+
+  /* ── Site Down Monitor ── */
+  {
+    id: "site-monitor",
+    name: "ניטור זמינות אתר",
+    description: "בדוק כל 5 דקות שהאתר עולה. אם נפל — שלח התראה מיידית ל-WhatsApp.",
+    category: "DevOps",
+    icon: "🔍",
+    tags: ["DevOps", "Monitor", "WhatsApp", "Alert"],
+    difficulty: "קל",
+    estimatedMinutes: 5,
+    workflow: {
+      nodes: [
+        { id: "n1", type: "trigger_schedule",     x: 80,  y: 200, config: { cron: "*/5 * * * *", timezone: "UTC" } },
+        { id: "n2", type: "action_http_request",  x: 340, y: 200, config: { method: "GET", url: "{{site.url}}", timeout: 10000 } },
+        { id: "n3", type: "logic_condition",      x: 600, y: 200, config: { field: "{{response.status}}", operator: "neq", value: "200" } },
+        { id: "n4", type: "action_send_whatsapp", x: 860, y: 120, config: { to: "972501234567", message: "🚨 *האתר נפל!*\n{{site.name}} אינו מגיב.\nסטטוס: {{response.status}}\nזמן: {{now}}" } },
+        { id: "n5", type: "action_update_crm",    x: 860, y: 280, config: { table: "deployments", fields: '{"status":"error","notes":"Site down detected"}' } },
+      ],
+      edges: [
+        { id: "e1", sourceNodeId: "n1", sourcePort: "out",   targetNodeId: "n2", targetPort: "in" },
+        { id: "e2", sourceNodeId: "n2", sourcePort: "out",   targetNodeId: "n3", targetPort: "in" },
+        { id: "e3", sourceNodeId: "n3", sourcePort: "true",  targetNodeId: "n4", targetPort: "in" },
+        { id: "e4", sourceNodeId: "n3", sourcePort: "true",  targetNodeId: "n5", targetPort: "in" },
+      ],
+    },
+  },
+
+  /* ── Birthday / Anniversary Greeting ── */
+  {
+    id: "birthday-greeting",
+    name: "ברכת יום הולדת / יום נישואין",
+    description: "שלח הודעת WhatsApp מותאמת אישית ביום הולדת או יום נישואין של הלקוח.",
+    category: "CRM",
+    icon: "🎂",
+    tags: ["CRM", "WhatsApp", "Personal"],
+    difficulty: "קל",
+    estimatedMinutes: 5,
+    workflow: {
+      nodes: [
+        { id: "n1", type: "trigger_schedule",     x: 80,  y: 200, config: { cron: "0 9 * * *", timezone: "Asia/Jerusalem" } },
+        { id: "n2", type: "action_http_request",  x: 340, y: 200, config: { method: "GET", url: "/api/admin/clients?birthdayToday=true" } },
+        { id: "n3", type: "ai_generate_content",  x: 600, y: 200, config: { content_type: "greeting", prompt: "כתוב ברכת יום הולדת חמה ומקצועית ל{{client.name}} בעברית", language: "he", tone: "warm" } },
+        { id: "n4", type: "action_send_whatsapp", x: 860, y: 200, config: { to: "{{client.phone}}", message: "{{ai_greeting}} 🎉🎂" } },
+      ],
+      edges: [
+        { id: "e1", sourceNodeId: "n1", sourcePort: "out", targetNodeId: "n2", targetPort: "in" },
+        { id: "e2", sourceNodeId: "n2", sourcePort: "out", targetNodeId: "n3", targetPort: "in" },
+        { id: "e3", sourceNodeId: "n3", sourcePort: "out", targetNodeId: "n4", targetPort: "in" },
+      ],
+    },
+  },
+
+  /* ── Invoice Generator ── */
+  {
+    id: "invoice-auto",
+    name: "חשבונית חודשית אוטומטית",
+    description: "בתחילת כל חודש — צור חשבוניות לכל הלקוחות הפעילים ושלח ב-Email.",
+    category: "Finance",
+    icon: "🧾",
+    tags: ["Finance", "Email", "Automation"],
+    difficulty: "מתקדם",
+    estimatedMinutes: 15,
+    workflow: {
+      nodes: [
+        { id: "n1", type: "trigger_schedule",     x: 80,  y: 200, config: { cron: "0 8 1 * *", timezone: "Asia/Jerusalem" } },
+        { id: "n2", type: "action_http_request",  x: 340, y: 200, config: { method: "GET", url: "/api/admin/clients?status=active&contractType=monthly" } },
+        { id: "n3", type: "action_http_request",  x: 600, y: 200, config: { method: "POST", url: "/api/admin/payments", body: '{"client_id":"{{client.id}}","amount":"{{client.mrr}}","due_date":"{{month_end}}","status":"pending"}' } },
+        { id: "n4", type: "action_send_email",    x: 860, y: 200, config: { to: "{{client.email}}", subject: "חשבונית {{month_name}} — {{company_name}}", body: "שלום {{client.name}},\n\nמצורפת חשבונית חודש {{month_name}} בסך ₪{{client.mrr}}.\n\nפרטי תשלום: {{payment_link}}\n\nתודה,\n{{company_name}}" } },
+      ],
+      edges: [
+        { id: "e1", sourceNodeId: "n1", sourcePort: "out", targetNodeId: "n2", targetPort: "in" },
+        { id: "e2", sourceNodeId: "n2", sourcePort: "out", targetNodeId: "n3", targetPort: "in" },
+        { id: "e3", sourceNodeId: "n3", sourcePort: "out", targetNodeId: "n4", targetPort: "in" },
+      ],
+    },
+  },
+
+  /* ── Support Ticket Escalation ── */
+  {
+    id: "ticket-escalation",
+    name: "הסלמת כרטיסי תמיכה",
+    description: "כרטיס תמיכה שלא נענה תוך 4 שעות — שלח התראה לצוות ושנה עדיפות ל-urgent.",
+    category: "Support",
+    icon: "🆘",
+    tags: ["Support", "WhatsApp", "Automation"],
+    difficulty: "בינוני",
+    estimatedMinutes: 8,
+    workflow: {
+      nodes: [
+        { id: "n1", type: "trigger_schedule",     x: 80,  y: 200, config: { cron: "0 */4 * * *", timezone: "Asia/Jerusalem" } },
+        { id: "n2", type: "action_http_request",  x: 340, y: 200, config: { method: "GET", url: "/api/admin/support?unansweredHours=4&status=open" } },
+        { id: "n3", type: "logic_condition",      x: 600, y: 200, config: { field: "{{tickets.length}}", operator: "gt", value: "0" } },
+        { id: "n4", type: "action_send_whatsapp", x: 860, y: 120, config: { to: "972501234567", message: "⚠️ {{tickets.length}} כרטיסי תמיכה ממתינים מעל 4 שעות!\nלקוחות: {{tickets.client_names}}" } },
+        { id: "n5", type: "action_update_crm",    x: 860, y: 280, config: { table: "support_tickets", id: "{{ticket.id}}", fields: '{"priority":"urgent"}' } },
+      ],
+      edges: [
+        { id: "e1", sourceNodeId: "n1", sourcePort: "out",  targetNodeId: "n2", targetPort: "in" },
+        { id: "e2", sourceNodeId: "n2", sourcePort: "out",  targetNodeId: "n3", targetPort: "in" },
+        { id: "e3", sourceNodeId: "n3", sourcePort: "true", targetNodeId: "n4", targetPort: "in" },
+        { id: "e4", sourceNodeId: "n3", sourcePort: "true", targetNodeId: "n5", targetPort: "in" },
+      ],
+    },
+  },
+
+  /* ── New Site Deploy Welcome ── */
+  {
+    id: "new-site-welcome",
+    name: "אתר חדש עלה לאוויר",
+    description: "כשאתר חדש עולה לאוויר — שלח מזל טוב ללקוח עם הלינק ובקש ביקורת Google.",
+    category: "DevOps",
+    icon: "🌐",
+    tags: ["DevOps", "WhatsApp", "Email", "CRM"],
+    difficulty: "קל",
+    estimatedMinutes: 5,
+    workflow: {
+      nodes: [
+        { id: "n1", type: "trigger_site_status",  x: 80,  y: 200, config: { event: "success", site_id: "" } },
+        { id: "n2", type: "action_send_whatsapp", x: 340, y: 120, config: { to: "{{client.phone}}", message: "🎉 *מזל טוב {{client.name}}!*\nהאתר שלך עלה לאוויר!\n👉 {{site.url}}\n\nנשמח אם תשאיר ביקורת: {{google_review_link}}" } },
+        { id: "n3", type: "action_send_email",    x: 340, y: 280, config: { to: "{{client.email}}", subject: "🚀 האתר שלך עלה לאוויר!", body: "שלום {{client.name}},\n\nהאתר שלך פעיל ב: {{site.url}}\n\nתודה שבחרת בנו! 🙏" } },
+        { id: "n4", type: "action_update_crm",    x: 620, y: 200, config: { table: "sites", id: "{{site.id}}", fields: '{"status":"active"}' } },
+      ],
+      edges: [
+        { id: "e1", sourceNodeId: "n1", sourcePort: "out", targetNodeId: "n2", targetPort: "in" },
+        { id: "e2", sourceNodeId: "n1", sourcePort: "out", targetNodeId: "n3", targetPort: "in" },
+        { id: "e3", sourceNodeId: "n2", sourcePort: "out", targetNodeId: "n4", targetPort: "in" },
+      ],
+    },
+  },
+
+  /* ── Weekly Report ── */
+  {
+    id: "weekly-report",
+    name: "דוח שבועי למנהל",
+    description: "כל יום ראשון בבוקר — AI מסכם את הפעילות השבועית ושולח דוח ל-WhatsApp.",
+    category: "Reports",
+    icon: "📊",
+    tags: ["Reports", "AI", "WhatsApp", "Schedule"],
+    difficulty: "מתקדם",
+    estimatedMinutes: 15,
+    workflow: {
+      nodes: [
+        { id: "n1", type: "trigger_schedule",     x: 80,  y: 200, config: { cron: "0 8 * * 0", timezone: "Asia/Jerusalem" } },
+        { id: "n2", type: "action_http_request",  x: 340, y: 200, config: { method: "GET", url: "/api/admin/dashboard?period=week" } },
+        { id: "n3", type: "ai_generate_content",  x: 600, y: 200, config: { content_type: "report", prompt: "סכם את הנתונים הבאים לדוח שבועי קצר ומקצועי בעברית: {{data}}", language: "he", tone: "professional" } },
+        { id: "n4", type: "action_send_whatsapp", x: 860, y: 200, config: { to: "972501234567", message: "📊 *דוח שבועי — {{week_label}}*\n\n{{ai_report}}" } },
+      ],
+      edges: [
+        { id: "e1", sourceNodeId: "n1", sourcePort: "out", targetNodeId: "n2", targetPort: "in" },
+        { id: "e2", sourceNodeId: "n2", sourcePort: "out", targetNodeId: "n3", targetPort: "in" },
+        { id: "e3", sourceNodeId: "n3", sourcePort: "out", targetNodeId: "n4", targetPort: "in" },
+      ],
+    },
+  },
 ];
 
 export const TEMPLATE_CATEGORIES = [...new Set(TEMPLATES.map((t) => t.category))];

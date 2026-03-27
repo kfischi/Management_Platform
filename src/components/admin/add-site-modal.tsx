@@ -12,6 +12,8 @@ import {
   Globe,
   ChevronDown,
   AlertCircle,
+  ChevronRight,
+  LayoutTemplate,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +25,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  SITE_TEMPLATES,
+  SITE_TEMPLATE_CATEGORIES,
+  type SiteTemplate,
+} from "@/app/admin/sites/site-templates";
+import { cn } from "@/lib/utils";
 
 type GitHubRepo = {
   id: number;
@@ -183,11 +191,124 @@ function RepoPicker({
   );
 }
 
+/* ─── Template Picker ─── */
+
+function TemplatePicker({
+  selected,
+  onSelect,
+}: {
+  selected: string | null;
+  onSelect: (id: string | null) => void;
+}) {
+  const [cat, setCat] = useState("הכל");
+  const cats = ["הכל", ...SITE_TEMPLATE_CATEGORIES];
+  const filtered = SITE_TEMPLATES.filter((t) => cat === "הכל" || t.category === cat);
+
+  return (
+    <div className="space-y-3">
+      {/* Category tabs */}
+      <div className="flex flex-wrap gap-1.5">
+        {cats.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => setCat(c)}
+            className={cn(
+              "rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
+              cat === c
+                ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                : "border-border text-muted-foreground hover:border-indigo-300"
+            )}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+
+      {/* Blank option */}
+      <button
+        type="button"
+        onClick={() => onSelect(null)}
+        className={cn(
+          "flex w-full items-center gap-3 rounded-xl border p-3 text-right transition-colors",
+          selected === null
+            ? "border-indigo-500 bg-indigo-50"
+            : "border-border hover:border-indigo-300 hover:bg-slate-50"
+        )}
+      >
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xl">
+          ⬜
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-foreground">אתר ריק</p>
+          <p className="text-xs text-muted-foreground">התחל מאפס ללא תוכן מוכן מראש</p>
+        </div>
+        {selected === null && <Check className="h-4 w-4 shrink-0 text-indigo-600" />}
+      </button>
+
+      {/* Templates grid */}
+      <div className="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
+        {filtered.map((t) => (
+          <TemplateCard
+            key={t.id}
+            template={t}
+            selected={selected === t.id}
+            onSelect={() => onSelect(t.id)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TemplateCard({
+  template,
+  selected,
+  onSelect,
+}: {
+  template: SiteTemplate;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        "relative flex flex-col items-start gap-2 rounded-xl border p-3 text-right transition-colors",
+        selected
+          ? "border-indigo-500 bg-indigo-50"
+          : "border-border hover:border-indigo-300 hover:bg-slate-50"
+      )}
+    >
+      {selected && (
+        <span className="absolute left-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600">
+          <Check className="h-3 w-3 text-white" />
+        </span>
+      )}
+      {/* Color gradient strip */}
+      <div className={cn("h-1.5 w-full rounded-full bg-gradient-to-r", template.color)} />
+      <span className="text-2xl leading-none">{template.icon}</span>
+      <div>
+        <p className="text-xs font-semibold text-foreground leading-tight">{template.name}</p>
+        <p className="mt-0.5 text-[10px] text-muted-foreground line-clamp-2">{template.description}</p>
+      </div>
+      <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">
+        {template.pages.length} עמודים
+      </span>
+    </button>
+  );
+}
+
+/* ─── Main Modal ─── */
+
 export function AddSiteModal({ variant = "default" }: { variant?: "default" | "empty" }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<"template" | "details">("template");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [templateId, setTemplateId] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
     domain: "",
@@ -196,13 +317,23 @@ export function AddSiteModal({ variant = "default" }: { variant?: "default" | "e
     description: "",
   });
 
+  const selectedTemplate = templateId ? SITE_TEMPLATES.find((t) => t.id === templateId) : null;
+
+  const handleOpenChange = (v: boolean) => {
+    setOpen(v);
+    if (!v) {
+      setStep("template");
+      setTemplateId(null);
+      setError("");
+      setForm({ name: "", domain: "", github_repo: "", netlify_url: "", description: "" });
+    }
+  };
+
   const handleRepoSelect = (repo: GitHubRepo) => {
     setForm((f) => ({
       ...f,
       github_repo: repo.full_name,
-      // Auto-fill name if empty
       name: f.name || repo.name,
-      // Auto-fill description if empty
       description: f.description || repo.description || "",
     }));
   };
@@ -219,14 +350,13 @@ export function AddSiteModal({ variant = "default" }: { variant?: "default" | "e
       const res = await fetch("/api/sites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, templateId }),
       });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || "שגיאה בהוספת האתר");
       }
       setOpen(false);
-      setForm({ name: "", domain: "", github_repo: "", netlify_url: "", description: "" });
       router.refresh();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "שגיאה לא ידועה");
@@ -236,7 +366,7 @@ export function AddSiteModal({ variant = "default" }: { variant?: "default" | "e
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {variant === "empty" ? (
           <Button className="gap-2">
@@ -250,77 +380,123 @@ export function AddSiteModal({ variant = "default" }: { variant?: "default" | "e
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md" dir="rtl">
+      <DialogContent className="sm:max-w-lg" dir="rtl">
         <DialogHeader>
-          <DialogTitle>הוספת אתר חדש</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-          {/* GitHub Repo Picker */}
-          <div className="space-y-1.5">
-            <Label>ריפו GitHub</Label>
-            <RepoPicker
-              value={form.github_repo}
-              onChange={handleRepoSelect}
-            />
-            {form.github_repo && (
-              <p className="text-xs text-muted-foreground">
-                נבחר:{" "}
-                <span className="font-mono text-foreground">{form.github_repo}</span>
-              </p>
+          <DialogTitle className="flex items-center gap-2">
+            {step === "template" ? (
+              <>
+                <LayoutTemplate className="h-5 w-5 text-indigo-600" />
+                בחר תבנית לאתר
+              </>
+            ) : (
+              <>
+                {selectedTemplate ? (
+                  <span className="text-xl">{selectedTemplate.icon}</span>
+                ) : (
+                  <Globe className="h-5 w-5 text-indigo-600" />
+                )}
+                פרטי האתר החדש
+                {selectedTemplate && (
+                  <span className="text-sm font-normal text-muted-foreground">
+                    — {selectedTemplate.name}
+                  </span>
+                )}
+              </>
             )}
-          </div>
+          </DialogTitle>
+        </DialogHeader>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="name">שם האתר *</Label>
-            <Input
-              id="name"
-              placeholder="לדוגמה: אתר חברת X"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              dir="rtl"
-            />
+        {/* Step 1: Template picker */}
+        {step === "template" && (
+          <div className="mt-2 space-y-4">
+            <TemplatePicker selected={templateId} onSelect={setTemplateId} />
+            <div className="flex justify-end">
+              <Button onClick={() => setStep("details")} className="gap-2">
+                המשך
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="domain">דומיין</Label>
-            <Input
-              id="domain"
-              placeholder="example.com"
-              value={form.domain}
-              onChange={(e) => setForm({ ...form, domain: e.target.value })}
-              dir="ltr"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="netlify_url">Netlify URL</Label>
-            <Input
-              id="netlify_url"
-              placeholder="https://your-site.netlify.app"
-              value={form.netlify_url}
-              onChange={(e) => setForm({ ...form, netlify_url: e.target.value })}
-              dir="ltr"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="description">תיאור</Label>
-            <Input
-              id="description"
-              placeholder="תיאור קצר של האתר"
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              dir="rtl"
-            />
-          </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <div className="flex gap-2 justify-end pt-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              ביטול
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
-              הוסף אתר
-            </Button>
-          </div>
-        </form>
+        )}
+
+        {/* Step 2: Site details */}
+        {step === "details" && (
+          <form onSubmit={handleSubmit} className="mt-2 space-y-4">
+            {/* GitHub Repo Picker */}
+            <div className="space-y-1.5">
+              <Label>ריפו GitHub</Label>
+              <RepoPicker value={form.github_repo} onChange={handleRepoSelect} />
+              {form.github_repo && (
+                <p className="text-xs text-muted-foreground">
+                  נבחר:{" "}
+                  <span className="font-mono text-foreground">{form.github_repo}</span>
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="name">שם האתר *</Label>
+              <Input
+                id="name"
+                placeholder="לדוגמה: אתר חברת X"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                dir="rtl"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="domain">דומיין</Label>
+              <Input
+                id="domain"
+                placeholder="example.com"
+                value={form.domain}
+                onChange={(e) => setForm({ ...form, domain: e.target.value })}
+                dir="ltr"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="netlify_url">Netlify URL</Label>
+              <Input
+                id="netlify_url"
+                placeholder="https://your-site.netlify.app"
+                value={form.netlify_url}
+                onChange={(e) => setForm({ ...form, netlify_url: e.target.value })}
+                dir="ltr"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="description">תיאור</Label>
+              <Input
+                id="description"
+                placeholder="תיאור קצר של האתר"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                dir="rtl"
+              />
+            </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <div className="flex gap-2 justify-between pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setStep("template")}
+                className="text-muted-foreground"
+              >
+                ← חזרה לתבניות
+              </Button>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                  ביטול
+                </Button>
+                <Button type="submit" disabled={loading}>
+                  {loading && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
+                  צור אתר
+                </Button>
+              </div>
+            </div>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );
