@@ -544,6 +544,44 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["domains"]["Insert"]>;
         Relationships: never[];
       };
+      chat_sessions: {
+        Row: {
+          id: string;
+          site_id: string;
+          visitor_id: string;
+          lead_id: string | null;
+          started_at: string;
+          last_msg_at: string;
+        };
+        Insert: {
+          id?: string;
+          site_id: string;
+          visitor_id: string;
+          lead_id?: string | null;
+          started_at?: string;
+          last_msg_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["chat_sessions"]["Insert"]>;
+        Relationships: never[];
+      };
+      chat_messages: {
+        Row: {
+          id: string;
+          session_id: string;
+          role: "user" | "assistant";
+          content: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          role: "user" | "assistant";
+          content: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["chat_messages"]["Insert"]>;
+        Relationships: never[];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
