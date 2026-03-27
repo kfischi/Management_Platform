@@ -39,7 +39,8 @@ export async function POST(req: NextRequest) {
       const { data: site } = await supabase.from("sites").select("id").eq("github_repo", repo).maybeSingle();
       if (site) {
         await supabase.from("deployments").insert({
-          site_id: site.id,
+          site_id: (site as { id: string }).id,
+          deploy_id: `gh-${Date.now()}`,
           status: "building",
           commit_message: commitMsg,
           commit_hash: commitHash?.slice(0, 7),

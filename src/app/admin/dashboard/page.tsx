@@ -9,6 +9,12 @@ import {
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import Link from "next/link";
+import type { Database } from "@/types/database";
+
+type SiteRow = Database["public"]["Tables"]["sites"]["Row"];
+type PaymentRow = Database["public"]["Tables"]["payments"]["Row"] & {
+  clients: { contact_name: string } | null;
+};
 
 async function getStats(supabase: Awaited<ReturnType<typeof createClient>>) {
   const [sites, clients, payments, automations] = await Promise.all([
@@ -18,14 +24,19 @@ async function getStats(supabase: Awaited<ReturnType<typeof createClient>>) {
     supabase.from("automations").select("id, is_active"),
   ]);
 
-  const totalRevenue = payments.data?.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0) ?? 0;
-  const pendingRevenue = payments.data?.filter(p => p.status === "pending").reduce((s, p) => s + p.amount, 0) ?? 0;
+  const sitesData = (sites.data ?? []) as { id: string; status: string }[];
+  const clientsData = (clients.data ?? []) as { id: string; status: string }[];
+  const paymentsData = (payments.data ?? []) as { amount: number; status: string }[];
+  const automationsData = (automations.data ?? []) as { id: string; is_active: boolean }[];
+
+  const totalRevenue = paymentsData.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0);
+  const pendingRevenue = paymentsData.filter(p => p.status === "pending").reduce((s, p) => s + p.amount, 0);
 
   return {
-    sites: { total: sites.count ?? 0, active: sites.data?.filter(s => s.status === "active").length ?? 0 },
-    clients: { total: clients.count ?? 0, active: clients.data?.filter(c => c.status === "active").length ?? 0 },
+    sites: { total: sites.count ?? 0, active: sitesData.filter(s => s.status === "active").length },
+    clients: { total: clients.count ?? 0, active: clientsData.filter(c => c.status === "active").length },
     revenue: { total: totalRevenue, pending: pendingRevenue },
-    automations: { total: automations.count ?? 0, active: automations.data?.filter(a => a.is_active).length ?? 0 },
+    automations: { total: automations.count ?? 0, active: automationsData.filter(a => a.is_active).length },
   };
 }
 
@@ -33,11 +44,13 @@ export default async function AdminDashboard() {
   const supabase = await createClient();
   const stats = await getStats(supabase);
 
-  const { data: recentSites } = await supabase
+  const { data: recentSitesRaw } = await supabase
     .from("sites").select("*").order("created_at", { ascending: false }).limit(4);
+  const recentSites = (recentSitesRaw ?? []) as SiteRow[];
 
-  const { data: overduePayments } = await supabase
+  const { data: overduePaymentsRaw } = await supabase
     .from("payments").select("*, clients(contact_name)").eq("status", "overdue").limit(5);
+  const overduePayments = (overduePaymentsRaw ?? []) as PaymentRow[];
 
   const statusConfig: Record<string, { label: string; dot: string }> = {
     active: { label: "פעיל", dot: "bg-emerald-500" },

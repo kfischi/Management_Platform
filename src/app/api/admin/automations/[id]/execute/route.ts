@@ -14,15 +14,18 @@ export async function POST(
   const body = await request.json().catch(() => ({}));
 
   // Fetch automation
-  const { data: automation, error: autoErr } = await supabase
+  const { data: automationRaw, error: autoErr } = await supabase
     .from("automations").select("*").eq("id", id).single();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const automation = automationRaw as any;
 
-  if (autoErr || !automation) {
+  if (autoErr || !automationRaw) {
     return NextResponse.json({ error: "אוטומציה לא נמצאה" }, { status: 404 });
   }
 
   // Create a run record
-  const { data: run, error: runErr } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: runRaw, error: runErr } = await supabase
     .from("workflow_runs")
     .insert({
       automation_id: id,
@@ -38,6 +41,8 @@ export async function POST(
   if (runErr) {
     return NextResponse.json({ error: runErr.message }, { status: 500 });
   }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const run = runRaw as any;
 
   // If n8n workflow is linked, trigger it
   if (automation.n8n_workflow_id) {

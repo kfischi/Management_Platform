@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get("status");
 
   let query = supabase.from("social_posts").select("*").order("scheduled_at", { ascending: false });
-  if (status) query = query.eq("status", status);
+  if (status) query = query.eq("status", status as "draft" | "scheduled" | "published" | "failed");
 
   const { data, error: dbErr } = await query.limit(100);
   if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });

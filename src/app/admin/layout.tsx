@@ -3,6 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { AdminSidebar } from "@/components/admin/sidebar";
 import { AdminHeader } from "@/components/admin/header";
 import { ToastProvider } from "@/components/admin/toast";
+import type { Database } from "@/types/database";
+
+type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 
 export default async function AdminLayout({
   children,
@@ -16,11 +19,12 @@ export default async function AdminLayout({
     redirect("/auth/login");
   }
 
-  const { data: profile } = await supabase
+  const { data: profileRaw } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .single();
+  const profile = profileRaw as ProfileRow | null;
 
   if (profile?.role !== "admin") {
     redirect("/client/dashboard");

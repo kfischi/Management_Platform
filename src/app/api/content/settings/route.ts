@@ -30,7 +30,8 @@ export async function GET(req: Request) {
 
   // Return as key-value map
   const map: Record<string, unknown> = {};
-  for (const s of data ?? []) map[s.key] = s.value;
+  type SettingRow = { key: string; value: unknown };
+  for (const s of (data ?? []) as SettingRow[]) map[s.key] = s.value;
   return NextResponse.json(map);
 }
 

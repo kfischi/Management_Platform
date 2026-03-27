@@ -35,18 +35,20 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (site) {
+      const siteId = (site as { id: string }).id;
+
       // Update site status
       if (deployStatus === "success") {
-        await supabase.from("sites").update({ status: "active" }).eq("id", site.id);
+        await supabase.from("sites").update({ status: "active" }).eq("id", siteId);
       } else if (deployStatus === "failed") {
-        await supabase.from("sites").update({ status: "error" }).eq("id", site.id);
+        await supabase.from("sites").update({ status: "error" }).eq("id", siteId);
       }
 
       // Create deployment record
       await supabase.from("deployments").insert({
-        site_id: site.id,
-        deploy_id: application_uuid,
-        status: deployStatus,
+        site_id: siteId,
+        deploy_id: application_uuid ?? `coolify-${Date.now()}`,
+        status: deployStatus as "success" | "building" | "failed" | "cancelled",
         commit_message: commit_message ?? "Coolify deployment",
         branch: git_branch ?? "main",
         finished_at: deployStatus !== "building" ? new Date().toISOString() : null,

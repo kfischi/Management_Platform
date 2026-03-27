@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     type?: string;
     automation_id?: string;
     status?: string;
-    output?: unknown;
+    output?: Record<string, unknown> | null;
     steps_total?: number;
     steps_done?: number;
     duration_ms?: number;
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       automation_id,
       status: status ?? "success",
       trigger_type: type ?? "webhook",
-      output,
+      output: output as import("@/types/database").Json | undefined,
       steps_total: steps_total ?? 0,
       steps_done: steps_done ?? 0,
       duration_ms: duration_ms ?? 0,
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   // Handle notification type callbacks
   if (type === "notification" && body.user_id) {
     await supabase.from("notifications").insert({
-      user_id: body.user_id,
+      user_id: body.user_id as string,
       type: "system",
       title: (body.title as string) ?? "N8N הודעה",
       body: (body.message as string) ?? "",

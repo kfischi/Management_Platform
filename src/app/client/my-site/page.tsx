@@ -6,25 +6,31 @@ import { Button } from "@/components/ui/button";
 import { Globe, ExternalLink, Github, RefreshCw, CheckCircle2, Clock, XCircle, Edit3 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import Link from "next/link";
+import type { Database } from "@/types/database";
+
+type SiteRow = Database["public"]["Tables"]["sites"]["Row"];
+type DeploymentRow = Database["public"]["Tables"]["deployments"]["Row"];
 
 export default async function MySitePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const { data: sites } = await supabase
+  const { data: sitesRaw } = await supabase
     .from("sites")
     .select("*")
     .eq("owner_id", user.id);
+  const sites = (sitesRaw ?? []) as SiteRow[];
 
-  const site = sites?.[0];
+  const site = sites[0] ?? null;
 
-  const { data: deployments } = await supabase
+  const { data: deploymentsRaw } = await supabase
     .from("deployments")
     .select("*")
     .eq("site_id", site?.id ?? "")
     .order("created_at", { ascending: false })
     .limit(10);
+  const deployments = (deploymentsRaw ?? []) as DeploymentRow[];
 
   const statusConfig: Record<string, { label: string; variant: "success" | "warning" | "destructive" | "info" }> = {
     active: { label: "פעיל ✓", variant: "success" },

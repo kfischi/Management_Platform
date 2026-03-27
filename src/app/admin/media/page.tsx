@@ -56,7 +56,7 @@ export default function AdminMediaPage() {
       .select("*")
       .order("created_at", { ascending: false })
       .limit(100);
-    setItems(data ?? []);
+    setItems((data ?? []) as MediaItem[]);
     setLoading(false);
   }
 

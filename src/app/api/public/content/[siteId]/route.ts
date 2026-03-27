@@ -37,10 +37,12 @@ export async function GET(
       return NextResponse.json({ error: "Page not found" }, { status: 404 });
     }
 
+    const typedPage = page as { id: string; [key: string]: unknown };
+
     const { data: blocks } = await supabase
       .from("content_blocks")
       .select("*")
-      .eq("page_id", page.id)
+      .eq("page_id", typedPage.id)
       .eq("is_visible", true)
       .order("order_index", { ascending: true });
 
@@ -77,7 +79,8 @@ export async function GET(
 
   // Transform settings array into a key-value map
   const settingsMap: Record<string, unknown> = {};
-  for (const s of settings ?? []) {
+  type SettingRow = { key: string; value: unknown };
+  for (const s of (settings ?? []) as SettingRow[]) {
     settingsMap[s.key] = s.value;
   }
 

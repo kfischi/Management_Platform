@@ -6,6 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Globe, Activity, CreditCard, MessageSquare, ExternalLink, Clock, CheckCircle2 } from "lucide-react";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import Link from "next/link";
+import type { Database } from "@/types/database";
+
+type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
+type ClientRow = Database["public"]["Tables"]["clients"]["Row"];
+type SiteRow = Database["public"]["Tables"]["sites"]["Row"];
+type PaymentRow = Database["public"]["Tables"]["payments"]["Row"];
+type DeploymentRow = Database["public"]["Tables"]["deployments"]["Row"] & {
+  sites: { name: string } | null;
+};
 
 export default async function ClientDashboardPage() {
   const supabase = await createClient();
@@ -13,40 +22,45 @@ export default async function ClientDashboardPage() {
 
   if (!user) redirect("/auth/login");
 
-  const { data: profile } = await supabase
+  const { data: profileRaw } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .single();
+  const profile = profileRaw as ProfileRow | null;
 
-  const { data: clientRecord } = await supabase
+  const { data: clientRecordRaw } = await supabase
     .from("clients")
     .select("*")
     .eq("profile_id", user.id)
     .single();
+  const clientRecord = clientRecordRaw as ClientRow | null;
 
-  const { data: sites } = await supabase
+  const { data: sitesRaw } = await supabase
     .from("sites")
     .select("*")
     .eq("owner_id", user.id)
     .order("created_at", { ascending: false });
+  const sites = (sitesRaw ?? []) as SiteRow[];
 
-  const { data: payments } = await supabase
+  const { data: paymentsRaw } = await supabase
     .from("payments")
     .select("*")
     .eq("client_id", clientRecord?.id ?? "")
     .order("due_date", { ascending: false })
     .limit(5);
+  const payments = (paymentsRaw ?? []) as PaymentRow[];
 
-  const { data: deployments } = await supabase
+  const { data: deploymentsRaw } = await supabase
     .from("deployments")
     .select("*, sites(name)")
-    .in("site_id", sites?.map(s => s.id) ?? [])
+    .in("site_id", sites.map(s => s.id))
     .order("created_at", { ascending: false })
     .limit(5);
+  const deployments = (deploymentsRaw ?? []) as DeploymentRow[];
 
-  const activeSite = sites?.[0];
-  const pendingPayments = payments?.filter(p => p.status === "pending" || p.status === "overdue") ?? [];
+  const activeSite = sites[0] ?? null;
+  const pendingPayments = payments.filter(p => p.status === "pending" || p.status === "overdue");
 
   const siteStatusConfig: Record<string, { label: string; variant: "success" | "warning" | "destructive" | "info"; dot: string }> = {
     active: { label: "פעיל", variant: "success", dot: "bg-green-500" },

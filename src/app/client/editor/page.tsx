@@ -2,6 +2,11 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import SiteEditor from "@/components/client/SiteEditor";
 import { FULL_PERMISSIONS, type ClientPermissions } from "@/lib/permissions";
+import type { Database } from "@/types/database";
+
+type SiteRow = Database["public"]["Tables"]["sites"]["Row"];
+type SitePageRow = Database["public"]["Tables"]["site_pages"]["Row"];
+type SiteSettingRow = Database["public"]["Tables"]["site_settings"]["Row"];
 
 export default async function EditorPage() {
   const supabase = await createClient();
@@ -9,30 +14,33 @@ export default async function EditorPage() {
   if (!user) redirect("/auth/login");
 
   // Get the client's site
-  const { data: sites } = await supabase
+  const { data: sitesRaw } = await supabase
     .from("sites")
     .select("*")
     .eq("owner_id", user.id)
     .limit(1);
+  const sites = (sitesRaw ?? []) as SiteRow[];
 
-  const site = sites?.[0];
+  const site = sites[0];
   if (!site) redirect("/client/dashboard");
 
   // Load all pages
-  const { data: pages } = await supabase
+  const { data: pagesRaw } = await supabase
     .from("site_pages")
     .select("*")
     .eq("site_id", site.id)
     .order("order_index", { ascending: true });
+  const pages = (pagesRaw ?? []) as SitePageRow[];
 
   // Load settings
-  const { data: settingsRows } = await supabase
+  const { data: settingsRowsRaw } = await supabase
     .from("site_settings")
     .select("*")
     .eq("site_id", site.id);
+  const settingsRows = (settingsRowsRaw ?? []) as SiteSettingRow[];
 
   const settings: Record<string, unknown> = {};
-  for (const s of settingsRows ?? []) settings[s.key] = s.value;
+  for (const s of settingsRows) settings[s.key] = s.value;
 
   // Read client permissions (set by admin via site settings)
   const clientPermissions: ClientPermissions =
@@ -41,7 +49,7 @@ export default async function EditorPage() {
   return (
     <SiteEditor
       site={site}
-      initialPages={pages ?? []}
+      initialPages={pages}
       initialSettings={settings}
       clientPermissions={clientPermissions}
     />

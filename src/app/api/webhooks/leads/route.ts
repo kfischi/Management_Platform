@@ -33,13 +33,14 @@ export async function POST(request: Request) {
       .single();
 
     if (error) throw error;
+    const typedClient = client as { id: string };
 
     // Log audit
     await supabase.from("audit_logs").insert({
       user_id: "00000000-0000-0000-0000-000000000000",
       action: "lead.created",
       resource_type: "clients",
-      resource_id: client.id,
+      resource_id: typedClient.id,
       metadata: { source, utm_source, utm_campaign },
     });
 
@@ -48,11 +49,11 @@ export async function POST(request: Request) {
       await fetch(process.env.N8N_LEAD_WEBHOOK_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ client, source }),
+        body: JSON.stringify({ client: typedClient, source }),
       }).catch(console.error);
     }
 
-    return NextResponse.json({ success: true, client_id: client.id });
+    return NextResponse.json({ success: true, client_id: typedClient.id });
   } catch (error) {
     console.error("Lead webhook error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

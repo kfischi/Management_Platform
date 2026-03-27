@@ -3,6 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { ClientSidebar } from "@/components/client/sidebar";
 import { LogOut, Bell } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import type { Database } from "@/types/database";
+
+type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 
 export default async function ClientLayout({
   children,
@@ -16,11 +19,12 @@ export default async function ClientLayout({
     redirect("/auth/login");
   }
 
-  const { data: profile } = await supabase
+  const { data: profileRaw } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .single();
+  const profile = profileRaw as ProfileRow | null;
 
   const initials = profile?.full_name
     ? profile.full_name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
