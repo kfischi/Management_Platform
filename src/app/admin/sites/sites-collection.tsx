@@ -4,7 +4,7 @@ import * as React from "react";
 import {
   Globe, ExternalLink, Github, RefreshCw,
   LayoutGrid, List, CheckCircle2, XCircle, Clock,
-  PauseCircle, Hash, AlignLeft, Link as LinkIcon, User,
+  PauseCircle, Hash, AlignLeft, Link as LinkIcon, User, Bot, Eye,
 } from "lucide-react";
 import { CollectionView, ColDef, BulkAction } from "@/components/admin/collection-view";
 import { RecordPanel, FieldDef } from "@/components/admin/record-panel";
@@ -12,6 +12,7 @@ import { useToast } from "@/components/admin/toast";
 import { AddSiteModal } from "@/components/admin/add-site-modal";
 import { EditBuildHookButton } from "@/components/admin/edit-build-hook-button";
 import { ClientPermissionsPanel } from "@/components/admin/client-permissions-panel";
+import { SiteChatbotPanel } from "@/components/admin/site-chatbot-panel";
 import { cn } from "@/lib/utils";
 
 /* ─────────── types ─────────── */
@@ -183,7 +184,7 @@ function DeployButton({ siteId, hasBuildHook }: { siteId: string; hasBuildHook: 
 
 /* ─────────── GridCard ─────────── */
 
-function SiteGridCard({ site, onClick }: { site: Site; onClick: () => void }) {
+function SiteGridCard({ site, onClick, onChatbot }: { site: Site; onClick: () => void; onChatbot: () => void }) {
   const status = STATUS_CFG[site.status] ?? STATUS_CFG.paused;
   const owner = site.profiles;
   return (
@@ -220,10 +221,19 @@ function SiteGridCard({ site, onClick }: { site: Site; onClick: () => void }) {
       </div>
 
       <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t" onClick={(e) => e.stopPropagation()}>
+        <a
+          href={`/sites/${site.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300 text-slate-600 transition-colors"
+          title="תצוגה מקדימה"
+        >
+          <Eye className="h-3 w-3" /> תצוגה
+        </a>
         {site.netlify_url && (
           <a href={site.netlify_url} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-slate-50 text-slate-600">
-            <ExternalLink className="h-3 w-3" /> צפייה
+            <ExternalLink className="h-3 w-3" /> Netlify
           </a>
         )}
         <DeployButton siteId={site.id} hasBuildHook={!!site.netlify_build_hook} />
@@ -232,6 +242,13 @@ function SiteGridCard({ site, onClick }: { site: Site; onClick: () => void }) {
           currentHook={site.netlify_build_hook ?? null}
         />
         <ClientPermissionsPanel siteId={site.id} siteName={site.name} />
+        <button
+          onClick={onChatbot}
+          className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300 text-slate-600 transition-colors"
+          title="הגדרות AI ו-WhatsApp"
+        >
+          <Bot className="h-3 w-3" /> AI
+        </button>
       </div>
     </div>
   );
@@ -244,6 +261,7 @@ export function SitesCollection({ initialData }: { initialData: Site[] }) {
   const [viewMode, setViewMode] = React.useState<"table" | "grid">("grid");
   const [panelOpen, setPanelOpen] = React.useState(false);
   const [selected, setSelected] = React.useState<Site | null>(null);
+  const [chatbotSite, setChatbotSite] = React.useState<Site | null>(null);
   const { success, error } = useToast();
 
   /* Status summary */
@@ -380,6 +398,7 @@ export function SitesCollection({ initialData }: { initialData: Site[] }) {
                 key={site.id}
                 site={site}
                 onClick={() => { setSelected(site); setPanelOpen(true); }}
+                onChatbot={() => setChatbotSite(site)}
               />
             ))}
           </div>
@@ -415,6 +434,15 @@ export function SitesCollection({ initialData }: { initialData: Site[] }) {
         onDelete={() => selected && handleDelete(selected)}
         activityLog={[]}
       />
+
+      {chatbotSite && (
+        <SiteChatbotPanel
+          siteId={chatbotSite.id}
+          siteName={chatbotSite.name}
+          open={!!chatbotSite}
+          onClose={() => setChatbotSite(null)}
+        />
+      )}
     </>
   );
 }
