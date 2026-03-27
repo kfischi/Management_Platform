@@ -52,12 +52,12 @@ const platformIcons: Record<string, string> = {
   tiktok: "🎵", youtube: "▶️", twitter: "🐦"
 };
 
-const analytics = [
-  { platform: "Instagram", reach: "12.4K", engagement: "4.2%", followers: "+124", icon: "📸" },
-  { platform: "Facebook", reach: "8.9K", engagement: "2.8%", followers: "+45", icon: "📘" },
-  { platform: "LinkedIn", reach: "6.2K", engagement: "5.1%", followers: "+89", icon: "💼" },
-  { platform: "Twitter/X", reach: "3.1K", engagement: "1.9%", followers: "+12", icon: "🐦" },
-];
+const PLATFORM_ICONS: Record<string, string> = {
+  instagram: "📸", facebook: "📘", linkedin: "💼", twitter: "🐦",
+};
+const PLATFORM_NAMES: Record<string, string> = {
+  instagram: "Instagram", facebook: "Facebook", linkedin: "LinkedIn", twitter: "Twitter/X",
+};
 
 interface SocialPost {
   id: string;
@@ -70,6 +70,23 @@ interface SocialPost {
   created_at: string;
 }
 
+interface AnalyticsPlatform {
+  platform: string;
+  totalPosts: number;
+  published: number;
+  scheduled: number;
+  drafts: number;
+  thisMonth: number;
+  reach: string;
+  engagement: string;
+  followers: string;
+}
+
+interface AnalyticsData {
+  platforms: AnalyticsPlatform[];
+  summary: { total: number; published: number; scheduled: number; drafts: number; thisMonth: number };
+}
+
 export default function SocialMediaPage() {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["facebook", "instagram", "linkedin"]);
   const [postContent, setPostContent] = useState("");
@@ -77,12 +94,18 @@ export default function SocialMediaPage() {
   const [loadingPosts, setLoadingPosts] = useState(true);
   const [saving, setSaving] = useState(false);
   const [scheduleDate, setScheduleDate] = useState("");
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/social")
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setPosts(data); })
       .finally(() => setLoadingPosts(false));
+
+    fetch("/api/admin/social/analytics")
+      .then(r => r.json())
+      .then(data => { if (data.platforms) setAnalyticsData(data); })
+      .catch(() => {});
   }, []);
 
   const togglePlatform = (id: string) => {
@@ -386,32 +409,55 @@ export default function SocialMediaPage() {
         </TabsContent>
 
         {/* Analytics */}
-        <TabsContent value="analytics" className="mt-4">
+        <TabsContent value="analytics" className="mt-4 space-y-4">
+          {analyticsData && (
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-5">
+              {[
+                { label: "סה״כ פוסטים", value: analyticsData.summary.total },
+                { label: "פורסמו", value: analyticsData.summary.published },
+                { label: "מתוזמנים", value: analyticsData.summary.scheduled },
+                { label: "טיוטות", value: analyticsData.summary.drafts },
+                { label: "החודש", value: analyticsData.summary.thisMonth },
+              ].map(s => (
+                <Card key={s.label}>
+                  <CardContent className="p-3 text-center">
+                    <p className="text-2xl font-bold">{s.value}</p>
+                    <p className="text-xs text-muted-foreground">{s.label}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
-            {analytics.map((a) => (
+            {(analyticsData?.platforms ?? []).map((a) => (
               <Card key={a.platform}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                      <span className="text-2xl">{a.icon}</span>
-                      <p className="font-semibold">{a.platform}</p>
+                      <span className="text-2xl">{PLATFORM_ICONS[a.platform] ?? "📱"}</span>
+                      <p className="font-semibold">{PLATFORM_NAMES[a.platform] ?? a.platform}</p>
                     </div>
                     <TrendingUp className="h-4 w-4 text-green-500" />
                   </div>
                   <div className="grid grid-cols-3 gap-3 text-center">
                     <div>
-                      <p className="text-lg font-bold">{a.reach}</p>
-                      <p className="text-xs text-muted-foreground">Reach</p>
+                      <p className="text-lg font-bold">{a.totalPosts}</p>
+                      <p className="text-xs text-muted-foreground">פוסטים</p>
                     </div>
                     <div>
-                      <p className="text-lg font-bold text-green-600">{a.engagement}</p>
-                      <p className="text-xs text-muted-foreground">Engagement</p>
+                      <p className="text-lg font-bold text-green-600">{a.published}</p>
+                      <p className="text-xs text-muted-foreground">פורסמו</p>
                     </div>
                     <div>
-                      <p className="text-lg font-bold text-blue-600">{a.followers}</p>
-                      <p className="text-xs text-muted-foreground">עוקבים חדשים</p>
+                      <p className="text-lg font-bold text-blue-600">{a.thisMonth}</p>
+                      <p className="text-xs text-muted-foreground">החודש</p>
                     </div>
                   </div>
+                  {a.reach === "—" && (
+                    <p className="text-xs text-muted-foreground text-center mt-3 border-t pt-2">
+                      חבר חשבון {PLATFORM_NAMES[a.platform]} לקבלת מדדי Reach ו-Engagement
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             ))}

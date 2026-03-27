@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Heart, TrendingUp, TrendingDown, AlertTriangle,
   MessageSquare, Mail, Phone, Sparkles, Activity,
-  DollarSign, Clock, Star, Zap
+  DollarSign, Clock, Star, Zap, Loader2, RefreshCw
 } from "lucide-react";
 
 interface ClientHealth {
@@ -22,13 +22,13 @@ interface ClientHealth {
   openTickets: number;
   deploymentsThisMonth: number;
   paymentStatus: "on-time" | "late" | "overdue";
-  contractEnd: string;
+  contractEnd: string | null;
   aiReason: string;
   aiAction: string;
   signals: { label: string; positive: boolean }[];
 }
 
-const clients: ClientHealth[] = [
+const MOCK_CLIENTS: ClientHealth[] = [
   {
     id: "c1", name: "אבי גולדברג", company: "TechStartup IL",
     score: 94, trend: "up", riskLevel: "low",
@@ -122,11 +122,30 @@ function HealthBar({ score }: { score: number }) {
 
 export default function ClientsHealthPage() {
   const [sortBy, setSortBy] = useState<"score" | "risk" | "mrr">("score");
-  const [selectedClient, setSelectedClient] = useState<ClientHealth | null>(clients[3]);
+  const [clients, setClients] = useState<ClientHealth[]>(MOCK_CLIENTS);
+  const [selectedClient, setSelectedClient] = useState<ClientHealth | null>(MOCK_CLIENTS[3]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/clients/health");
+      if (res.ok) {
+        const data: ClientHealth[] = await res.json();
+        if (data.length > 0) {
+          setClients(data);
+          setSelectedClient(data.find(c => c.riskLevel === "critical") ?? data[0] ?? null);
+        }
+      }
+    } catch { /* keep mock data */ }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const criticalCount = clients.filter(c => c.riskLevel === "critical").length;
   const atRiskCount = clients.filter(c => c.riskLevel === "medium" || c.riskLevel === "high").length;
-  const avgScore = Math.round(clients.reduce((s, c) => s + c.score, 0) / clients.length);
+  const avgScore = clients.length ? Math.round(clients.reduce((s, c) => s + c.score, 0) / clients.length) : 0;
   const totalMRR = clients.reduce((s, c) => s + c.mrr, 0);
 
   const sorted = [...clients].sort((a, b) => {
@@ -147,9 +166,9 @@ export default function ClientsHealthPage() {
           <p className="text-muted-foreground">AI מנתח כל לקוח ומנבא סיכון נטישה</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5">
-            <Sparkles className="h-3.5 w-3.5 text-purple-500" />
-            ריצת AI מלאה
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={load} disabled={loading}>
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            רענן
           </Button>
           <Button size="sm" className="gap-1.5">
             <Zap className="h-3.5 w-3.5" />
@@ -193,7 +212,7 @@ export default function ClientsHealthPage() {
                 {criticalCount} לקוח{criticalCount > 1 ? "ות" : ""} בסיכון קריטי לנטישה!
               </p>
               <p className="text-xs text-red-600">
-                {clients.filter(c => c.riskLevel === "critical").map(c => c.company).join(", ")} — פעל עכשיו!
+                {clients.filter(c => c.riskLevel === "critical").map(c => c.company || c.name).join(", ")} — פעל עכשיו!
               </p>
             </div>
             <Button size="sm" className="bg-red-600 hover:bg-red-700 shrink-0 gap-1">

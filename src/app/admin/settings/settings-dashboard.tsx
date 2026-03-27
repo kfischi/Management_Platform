@@ -74,8 +74,9 @@ export function SettingsDashboard({ initialSettings }: { initialSettings: Settin
   const netlify  = useSave(["netlify_token"], s, setS);
   const github   = useSave(["github_token"], s, setS);
   const whatsapp = useSave(["whatsapp_token","whatsapp_phone"], s, setS);
+  const evolution = useSave(["evolution_api_key","evolution_api_url","evolution_instance","n8n_whatsapp_webhook"], s, setS);
   const ai       = useSave(["claude_api_key","openai_api_key","ai_provider"], s, setS);
-  const resend   = useSave(["resend_api_key"], s, setS);
+  const resend   = useSave(["resend_api_key","resend_from_email"], s, setS);
   const coolify  = useSave(["coolify_url","coolify_token"], s, setS);
   const agency   = useSave(["agency_name","agency_email","agency_phone","agency_logo","brand_color","whatsapp_phone"], s, setS);
 
@@ -225,11 +226,50 @@ export function SettingsDashboard({ initialSettings }: { initialSettings: Settin
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="space-y-1.5">
-                <Label>Resend API Key</Label>
-                <SecretInput value={s.resend_api_key ?? ""} onChange={set("resend_api_key")} placeholder="re_••••••••" />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label>Resend API Key</Label>
+                  <SecretInput value={s.resend_api_key ?? ""} onChange={set("resend_api_key")} placeholder="re_••••••••" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>From Email</Label>
+                  <Input value={s.resend_from_email ?? ""} onChange={e => set("resend_from_email")(e.target.value)} placeholder="noreply@yourdomain.com" />
+                </div>
               </div>
               <SaveBtn hook={resend} />
+            </CardContent>
+          </Card>
+
+          {/* Evolution API (WhatsApp) */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                📱 Evolution API — WhatsApp <Connected connected={!!s.evolution_api_url && !!s.evolution_api_key} />
+              </CardTitle>
+              <CardDescription>Evolution API לשליחת WhatsApp ישירה</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label>Evolution API URL</Label>
+                  <Input value={s.evolution_api_url ?? ""} onChange={e => set("evolution_api_url")(e.target.value)} placeholder="https://evolution.yourserver.com" dir="ltr" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>API Key</Label>
+                  <SecretInput value={s.evolution_api_key ?? ""} onChange={set("evolution_api_key")} placeholder="your-api-key" />
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label>Instance Name</Label>
+                  <Input value={s.evolution_instance ?? ""} onChange={e => set("evolution_instance")(e.target.value)} placeholder="default" dir="ltr" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>N8N WhatsApp Webhook (חלופי)</Label>
+                  <Input value={s.n8n_whatsapp_webhook ?? ""} onChange={e => set("n8n_whatsapp_webhook")(e.target.value)} placeholder="https://n8n.../webhook/whatsapp" dir="ltr" />
+                </div>
+              </div>
+              <SaveBtn hook={evolution} />
             </CardContent>
           </Card>
 
