@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Globe, Users, FileText, CreditCard,
   Zap, Server, Bot, MessageSquare, Image, Settings,
   Building2, Target, Share2, Brain, Calendar,
-  Search, Heart, Globe2, Receipt
+  Search, Heart, Globe2, Receipt, Mail, BarChart2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +35,7 @@ const navItems = [
       { title: "רשתות חברתיות", href: "/admin/social", icon: Share2 },
       { title: "הצעות מחיר", href: "/admin/proposals", icon: Receipt },
       { title: "תקשורת", href: "/admin/communications", icon: MessageSquare },
+      { title: "סדרות אימיילים", href: "/admin/email-sequences", icon: Mail, badge: "NEW" },
     ],
   },
   {
@@ -51,6 +52,7 @@ const navItems = [
       { title: "אוטומציות N8N", href: "/admin/automations", icon: Zap },
       { title: "תשתיות Coolify", href: "/admin/infrastructure", icon: Server },
       { title: "AI & Chatbots", href: "/admin/ai-tools", icon: Bot },
+      { title: "אנליטיקס אתרים", href: "/admin/site-analytics", icon: BarChart2, badge: "NEW" },
       { title: "מדיה", href: "/admin/media", icon: Image },
     ],
   },

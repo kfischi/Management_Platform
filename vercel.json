@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/admin/email-sequences/processor",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/admin/ai-agent",
+      "schedule": "0 8 * * *"
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { SiteBlock } from "@/components/site-renderer/blocks";
 import { WhatsAppButton } from "@/components/site-renderer/whatsapp-button";
 import { ChatWidget } from "@/components/chat-widget";
+import { AnalyticsTracker } from "@/components/site-renderer/analytics-tracker";
 
 /* ─── types ─── */
 interface PageRow {
@@ -191,6 +192,9 @@ export default async function SitePage({
       {/* ── Floating: WhatsApp + Chatbot ── */}
       {whatsappNum && <WhatsAppButton number={whatsappNum} />}
       {chatEnabled && <ChatWidget siteId={siteId} greeting={chatGreeting} />}
+
+      {/* ── Analytics tracking ── */}
+      <AnalyticsTracker siteId={siteId} pageSlug={pageSlug} />
     </div>
   );
 }

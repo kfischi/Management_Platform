@@ -582,6 +582,132 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["chat_messages"]["Insert"]>;
         Relationships: never[];
       };
+      email_sequences: {
+        Row: {
+          id: string;
+          name: string;
+          description: string | null;
+          trigger: string;
+          trigger_config: Record<string, unknown>;
+          is_active: boolean;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string | null;
+          trigger?: string;
+          trigger_config?: Record<string, unknown>;
+          is_active?: boolean;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["email_sequences"]["Insert"]>;
+        Relationships: never[];
+      };
+      email_sequence_steps: {
+        Row: {
+          id: string;
+          sequence_id: string;
+          step_number: number;
+          delay_days: number;
+          subject: string;
+          body_html: string;
+          from_name: string | null;
+          from_email: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          sequence_id: string;
+          step_number: number;
+          delay_days?: number;
+          subject: string;
+          body_html: string;
+          from_name?: string | null;
+          from_email?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["email_sequence_steps"]["Insert"]>;
+        Relationships: never[];
+      };
+      email_sequence_enrollments: {
+        Row: {
+          id: string;
+          sequence_id: string;
+          lead_id: string;
+          current_step: number;
+          next_send_at: string | null;
+          status: string;
+          enrolled_at: string;
+          completed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          sequence_id: string;
+          lead_id: string;
+          current_step?: number;
+          next_send_at?: string | null;
+          status?: string;
+          enrolled_at?: string;
+          completed_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["email_sequence_enrollments"]["Insert"]>;
+        Relationships: never[];
+      };
+      email_logs: {
+        Row: {
+          id: string;
+          enrollment_id: string | null;
+          step_id: string | null;
+          lead_id: string | null;
+          to_email: string;
+          subject: string;
+          resend_id: string | null;
+          status: string;
+          sent_at: string;
+        };
+        Insert: {
+          id?: string;
+          enrollment_id?: string | null;
+          step_id?: string | null;
+          lead_id?: string | null;
+          to_email: string;
+          subject: string;
+          resend_id?: string | null;
+          status?: string;
+          sent_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["email_logs"]["Insert"]>;
+        Relationships: never[];
+      };
+      site_analytics: {
+        Row: {
+          id: string;
+          site_id: string;
+          page_slug: string;
+          visitor_id: string | null;
+          referrer: string | null;
+          user_agent: string | null;
+          country: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          site_id: string;
+          page_slug?: string;
+          visitor_id?: string | null;
+          referrer?: string | null;
+          user_agent?: string | null;
+          country?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["site_analytics"]["Insert"]>;
+        Relationships: never[];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
