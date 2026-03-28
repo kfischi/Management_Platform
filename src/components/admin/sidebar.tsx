@@ -7,7 +7,7 @@ import {
   Zap, Server, Bot, MessageSquare, Image, Settings,
   Building2, Target, Share2, Brain, Calendar,
   Search, Heart, Globe2, Receipt, Mail, BarChart2,
-  TrendingUp, Sparkles,
+  TrendingUp, Sparkles, GitBranch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +23,7 @@ const navItems = [
     title: "CRM & לידים",
     items: [
       { title: "לידים", href: "/admin/leads", icon: Target },
+      { title: "Pipeline מכירות", href: "/admin/pipeline", icon: GitBranch, badge: "NEW" },
       { title: "לקוחות", href: "/admin/crm/clients", icon: Users },
       { title: "Revenue Dashboard", href: "/admin/revenue", icon: TrendingUp, badge: "NEW" },
       { title: "חוזים", href: "/admin/crm/contracts", icon: FileText },

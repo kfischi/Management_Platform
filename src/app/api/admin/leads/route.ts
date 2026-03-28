@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   if (!email?.trim()) return NextResponse.json({ error: "אימייל הוא שדה חובה" }, { status: 400 });
   const { data, error: dbErr } = await supabase
     .from("leads")
-    .insert({ name: name.trim(), company: company?.trim() || null, email: email.trim(), phone: phone?.trim() || null, source: source ?? "manual", status: status ?? "new", score: Number(score) || 50, value: Number(value) || 0, notes: notes?.trim() || null, tags: tags ?? [], ai_insight: ai_insight?.trim() || null, created_by: user.id })
+    .insert({ name: name.trim(), company: company?.trim() || null, email: email.trim(), phone: phone?.trim() || null, source: source ?? "manual", status: status ?? "new", score: Number(score) || 50, value: Number(value) || 0, notes: notes?.trim() || null, tags: tags ?? [], ai_insight: ai_insight?.trim() || null })
     .select().single();
   if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
   return NextResponse.json(data, { status: 201 });

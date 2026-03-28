@@ -71,6 +71,9 @@ export interface Database {
           owner_id: string;
           template: string | null;
           description: string | null;
+          review_token: string | null;
+          review_status: string;
+          review_comment: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -86,6 +89,9 @@ export interface Database {
           owner_id: string;
           template?: string | null;
           description?: string | null;
+          review_token?: string | null;
+          review_status?: string;
+          review_comment?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -362,10 +368,11 @@ export interface Database {
           tags: string[];
           ai_insight: string | null;
           notes: string | null;
+          pipeline_stage: string;
           created_at: string;
           updated_at: string;
         };
-        Insert: Omit<Database["public"]["Tables"]["leads"]["Row"], "id" | "created_at" | "updated_at">;
+        Insert: Omit<Database["public"]["Tables"]["leads"]["Row"], "id" | "created_at" | "updated_at" | "pipeline_stage"> & { pipeline_stage?: string };
         Update: Partial<Database["public"]["Tables"]["leads"]["Insert"]>;
         Relationships: never[];
       };
@@ -706,6 +713,28 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["site_analytics"]["Insert"]>;
+        Relationships: never[];
+      };
+      pipeline_events: {
+        Row: {
+          id: string;
+          lead_id: string | null;
+          from_stage: string | null;
+          to_stage: string;
+          note: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          lead_id?: string | null;
+          from_stage?: string | null;
+          to_stage: string;
+          note?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["pipeline_events"]["Insert"]>;
         Relationships: never[];
       };
     };
