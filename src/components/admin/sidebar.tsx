@@ -6,7 +6,8 @@ import {
   LayoutDashboard, Globe, Users, FileText, CreditCard,
   Zap, Server, Bot, MessageSquare, Image, Settings,
   Building2, Target, Share2, Brain, Calendar,
-  Search, Heart, Globe2, Receipt, Mail, BarChart2
+  Search, Heart, Globe2, Receipt, Mail, BarChart2,
+  TrendingUp, Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,9 +24,10 @@ const navItems = [
     items: [
       { title: "לידים", href: "/admin/leads", icon: Target },
       { title: "לקוחות", href: "/admin/crm/clients", icon: Users },
+      { title: "Revenue Dashboard", href: "/admin/revenue", icon: TrendingUp, badge: "NEW" },
       { title: "חוזים", href: "/admin/crm/contracts", icon: FileText },
       { title: "תשלומים", href: "/admin/crm/payments", icon: CreditCard },
-      { title: "Client Health", href: "/admin/clients-health", icon: Heart, badge: "NEW" },
+      { title: "Client Health", href: "/admin/clients-health", icon: Heart },
     ],
   },
   {
@@ -52,7 +54,8 @@ const navItems = [
       { title: "אוטומציות N8N", href: "/admin/automations", icon: Zap },
       { title: "תשתיות Coolify", href: "/admin/infrastructure", icon: Server },
       { title: "AI & Chatbots", href: "/admin/ai-tools", icon: Bot },
-      { title: "אנליטיקס אתרים", href: "/admin/site-analytics", icon: BarChart2, badge: "NEW" },
+      { title: "AI Site Auditor", href: "/admin/site-auditor", icon: Sparkles, badge: "AI" },
+      { title: "אנליטיקס אתרים", href: "/admin/site-analytics", icon: BarChart2 },
       { title: "מדיה", href: "/admin/media", icon: Image },
     ],
   },

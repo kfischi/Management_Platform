@@ -185,7 +185,16 @@ export default function ProposalsPage() {
         </p>
         <div className="flex gap-3">
           <Button variant="outline" onClick={() => setStep("input")}>הצעה חדשה</Button>
-          <Button>מעבר ל-CRM</Button>
+          {savedId && (
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => window.open(`/admin/proposals/${savedId}`, "_blank")}
+            >
+              <Download className="h-4 w-4" /> הורד PDF
+            </Button>
+          )}
+          <Button asChild><a href="/admin/leads">מעבר ל-CRM</a></Button>
         </div>
       </div>
     );
@@ -399,6 +408,15 @@ export default function ProposalsPage() {
                 <Download className="h-4 w-4" />
                 שמור טיוטה
               </Button>
+              {savedId && (
+                <Button
+                  variant="outline"
+                  className="gap-2 border-green-300 text-green-700 hover:bg-green-50"
+                  onClick={() => window.open(`/admin/proposals/${savedId}`, "_blank")}
+                >
+                  🖨️ PDF
+                </Button>
+              )}
               <Button
                 className="flex-1 gap-2"
                 onClick={handleSend}

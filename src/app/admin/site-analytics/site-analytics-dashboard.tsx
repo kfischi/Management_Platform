@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BarChart2, Eye, Users, Globe, TrendingUp, RefreshCw, Loader2, ExternalLink } from "lucide-react";
+import { BarChart2, Eye, Users, Globe, TrendingUp, RefreshCw, Loader2, ExternalLink, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Site = { id: string; name: string; domain: string | null; status: string };
@@ -15,11 +15,16 @@ type Analytics = {
   by_day: { date: string; views: number }[];
   top_referrers: { host: string; count: number }[];
 };
+type Funnel = {
+  funnel: { stage: string; count: number; pct: number }[];
+  conversion_rates: { visit_to_lead: string; lead_to_won: string; visit_to_won: string };
+};
 
 export default function SiteAnalyticsDashboard() {
   const [sites, setSites] = useState<Site[]>([]);
   const [selectedSite, setSelectedSite] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [funnel, setFunnel] = useState<Funnel | null>(null);
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(false);
   const [sitesLoading, setSitesLoading] = useState(true);
@@ -39,9 +44,12 @@ export default function SiteAnalyticsDashboard() {
     if (!selectedSite) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/analytics/${selectedSite}?days=${days}`);
-      const data = await res.json() as Analytics;
-      setAnalytics(data);
+      const [analyticsRes, funnelRes] = await Promise.all([
+        fetch(`/api/analytics/${selectedSite}?days=${days}`),
+        fetch(`/api/analytics/${selectedSite}/funnel?days=${days}`),
+      ]);
+      setAnalytics(await analyticsRes.json() as Analytics);
+      setFunnel(await funnelRes.json() as Funnel);
     } finally {
       setLoading(false);
     }
@@ -232,6 +240,51 @@ export default function SiteAnalyticsDashboard() {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Funnel */}
+              {funnel && (
+                <Card className="border-0 shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                      <Filter className="h-4 w-4 text-indigo-500" />
+                      Funnel המרות
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {funnel.funnel.map((stage, i) => (
+                        <div key={i}>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="text-slate-600">{stage.stage}</span>
+                            <span className="font-semibold text-slate-800">{stage.count.toLocaleString()}</span>
+                          </div>
+                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{
+                                width: `${Math.max(2, stage.pct)}%`,
+                                background: i === 0 ? "#6366f1" : i === 1 ? "#8b5cf6" : i === 2 ? "#f59e0b" : "#10b981",
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                      {[
+                        { label: "ביקור → ליד", value: funnel.conversion_rates.visit_to_lead },
+                        { label: "ליד → סגירה", value: funnel.conversion_rates.lead_to_won },
+                        { label: "ביקור → סגירה", value: funnel.conversion_rates.visit_to_won },
+                      ].map(r => (
+                        <div key={r.label} className="bg-slate-50 rounded-xl p-2">
+                          <p className="text-lg font-bold text-indigo-600">{r.value}</p>
+                          <p className="text-xs text-slate-400">{r.label}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Link to site */}
               {selectedSite && (
