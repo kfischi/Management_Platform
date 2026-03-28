@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, Save, Upload, X, ImageIcon, Bot } from "lucide-react";
+import { Loader2, Save, Upload, X, ImageIcon, Bot, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type Block = {
@@ -67,6 +67,42 @@ const BLOCK_FIELDS: Record<string, FieldDef[]> = {
   video: [
     { key: "url",     label: "קישור וידאו (YouTube/Vimeo)", type: "url",      placeholder: "https://youtube.com/..." },
     { key: "caption", label: "כיתוב",                       type: "text",     placeholder: "..." },
+  ],
+  booking: [
+    { key: "heading",   label: "כותרת",                       type: "text",     placeholder: "קביעת תור" },
+    { key: "subtext",   label: "תת-כותרת",                    type: "text",     placeholder: "בחרו זמן נוח ונחזור אליכם" },
+    { key: "embed_url", label: "קישור Calendly / Cal.com",    type: "url",      placeholder: "https://calendly.com/yourname" },
+    { key: "phone",     label: "טלפון חלופי",                  type: "text",     placeholder: "050-0000000" },
+    { key: "email",     label: "אימייל חלופי",                 type: "text",     placeholder: "info@example.com" },
+  ],
+  products: [
+    { key: "heading",  label: "כותרת",    type: "text", placeholder: "המוצרים שלנו" },
+    { key: "subtext",  label: "תת-כותרת", type: "text", placeholder: "" },
+    { key: "currency", label: "מטבע",     type: "text", placeholder: "₪" },
+    {
+      key: "products",
+      label: "מוצרים (שם|מחיר|תיאור|קישור תמונה, שורה לכל מוצר)",
+      type: "list",
+      placeholder: "חבילה בסיסית|299|תיאור קצר|https://...\nחבילה מתקדמת|599|תיאור|https://...",
+    },
+  ],
+  pricing: [
+    { key: "heading",  label: "כותרת",    type: "text", placeholder: "תוכניות ומחירים" },
+    { key: "subtext",  label: "תת-כותרת", type: "text", placeholder: "" },
+    { key: "currency", label: "מטבע",     type: "text", placeholder: "₪" },
+    {
+      key: "plans",
+      label: "תוכניות (שם|מחיר|תקופה|תיאור|תכונות מופרדות בפסיק, שורה לכל תוכנית)",
+      type: "list",
+      placeholder: "בסיסי|299|חודש|לעסקים קטנים|אתר,דומיין,תמיכה\nפרו|599|חודש|הכל כלול|הכל+AI",
+    },
+  ],
+  payment: [
+    { key: "heading",      label: "כותרת",          type: "text",    placeholder: "תשלום מאובטח" },
+    { key: "subtext",      label: "תת-כותרת",        type: "text",    placeholder: "" },
+    { key: "product_name", label: "שם המוצר/שירות",  type: "text",    placeholder: "חבילה בסיסית" },
+    { key: "price",        label: "מחיר (₪)",         type: "text",    placeholder: "299" },
+    { key: "site_id",      label: "Site ID (אוטומטי)", type: "text",   placeholder: "" },
   ],
   chatbot: [
     { key: "greeting",       label: "הודעת פתיחה",            type: "textarea", placeholder: "שלום! כיצד אוכל לעזור לך היום?" },
@@ -229,6 +265,9 @@ export default function BlockEditor({
   const fields = BLOCK_FIELDS[block.block_type] ?? [];
   const [form, setForm] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState(false);
+  const [aiContext, setAiContext] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [showAI, setShowAI] = useState(false);
 
   // Init form from block.content
   useEffect(() => {
@@ -261,6 +300,35 @@ export default function BlockEditor({
     }
     onSave(content);
     setDirty(false);
+  };
+
+  const generateWithAI = async () => {
+    if (!aiContext.trim()) return;
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/admin/ai-generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: block.block_type, context: aiContext }),
+      });
+      const data = await res.json() as { content?: Record<string, unknown>; error?: string };
+      if (data.content) {
+        const newForm: Record<string, string> = { ...form };
+        for (const field of fields) {
+          const val = data.content[field.key];
+          if (val !== undefined) {
+            newForm[field.key] = field.type === "list"
+              ? parseListField(val)
+              : String(val);
+          }
+        }
+        setForm(newForm);
+        setDirty(true);
+        setShowAI(false);
+      }
+    } catch { /* ignore */ } finally {
+      setGenerating(false);
+    }
   };
 
   if (fields.length === 0) {
@@ -321,6 +389,45 @@ export default function BlockEditor({
           )}
         </div>
       ))}
+
+      {/* AI Generate section */}
+      {showAI ? (
+        <div className="rounded-xl border border-purple-200 bg-purple-50 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-purple-700 flex items-center gap-1">
+              <Sparkles className="h-3.5 w-3.5" /> כתוב עם AI
+            </span>
+            <button onClick={() => setShowAI(false)} className="text-purple-400 hover:text-purple-600">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <textarea
+            value={aiContext}
+            onChange={e => setAiContext(e.target.value)}
+            placeholder="תאר את העסק... (לדוגמה: 'מסעדה איטלקית בתל אביב, מתמחים בפסטה ופיצה')"
+            rows={2}
+            className="w-full rounded-md border border-purple-200 bg-white px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300"
+          />
+          <Button
+            size="sm"
+            onClick={generateWithAI}
+            disabled={generating || !aiContext.trim()}
+            className="w-full gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+          >
+            {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            {generating ? "כותב..." : "צור תוכן"}
+          </Button>
+        </div>
+      ) : (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setShowAI(true)}
+          className="w-full gap-2 border-purple-200 text-purple-600 hover:bg-purple-50"
+        >
+          <Sparkles className="h-3.5 w-3.5" /> כתוב עם AI
+        </Button>
+      )}
 
       <Button
         onClick={handleSave}

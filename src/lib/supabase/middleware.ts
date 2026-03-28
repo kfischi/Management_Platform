@@ -37,8 +37,10 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/auth") ||
     pathname === "/" ||
     pathname.startsWith("/api/webhooks") ||
-    pathname.startsWith("/sites/") ||       // public site renderer
-    pathname.startsWith("/api/chat/")       // public chatbot API
+    pathname.startsWith("/sites/") ||              // public site renderer
+    pathname.startsWith("/api/chat/") ||           // public chatbot API
+    pathname.startsWith("/api/analytics/") ||      // public analytics tracking
+    pathname.startsWith("/api/payments/payme/webhook") // PayMe IPN webhook
   ) {
     return supabaseResponse;
   }

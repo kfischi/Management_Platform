@@ -418,6 +418,305 @@ export function VideoBlock({ content }: BlockProps) {
   );
 }
 
+/* ────────────────── BOOKING ────────────────── */
+export function BookingBlock({ content }: BlockProps) {
+  const heading    = str(content.heading)     || "קביעת תור";
+  const subtext    = str(content.subtext)     || "בחרו זמן נוח ונחזור אליכם";
+  const embedUrl   = str(content.embed_url);   // Calendly / Cal.com embed URL
+  const phone      = str(content.phone);
+  const email      = str(content.email);
+
+  return (
+    <section id="booking" className="py-20 px-6 bg-gradient-to-br from-indigo-50 to-slate-50">
+      <div className="max-w-3xl mx-auto text-center">
+        <h2 className="text-3xl font-bold text-slate-900 mb-3">{heading}</h2>
+        <p className="text-slate-500 mb-10">{subtext}</p>
+
+        {embedUrl ? (
+          <iframe
+            src={embedUrl}
+            className="w-full rounded-2xl shadow-lg border border-slate-200"
+            style={{ minHeight: 680 }}
+            frameBorder="0"
+            title="קביעת פגישה"
+          />
+        ) : (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-10 text-slate-400">
+            <Clock className="h-10 w-10 mx-auto mb-4 opacity-40" />
+            <p className="text-sm">הגדר קישור Calendly / Cal.com בעריכת הבלוק</p>
+            <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+              {phone && (
+                <a href={`tel:${phone}`} className="flex items-center gap-2 justify-center text-indigo-600 font-semibold hover:underline">
+                  <Phone className="h-4 w-4" />{phone}
+                </a>
+              )}
+              {email && (
+                <a href={`mailto:${email}`} className="flex items-center gap-2 justify-center text-indigo-600 font-semibold hover:underline">
+                  <Mail className="h-4 w-4" />{email}
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/* ────────────────── PRODUCTS ────────────────── */
+interface Product {
+  name: string;
+  description: string;
+  price: string;
+  image?: string;
+  badge?: string;
+  cta_text?: string;
+  cta_link?: string;
+}
+
+export function ProductsBlock({ content }: BlockProps) {
+  const heading  = str(content.heading)  || "המוצרים שלנו";
+  const subtext  = str(content.subtext)  || "";
+  const products = arr<Product>(content.products);
+  const currency = str(content.currency) || "₪";
+
+  return (
+    <section className="py-20 px-6 bg-white">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-slate-900 mb-3">{heading}</h2>
+          {subtext && <p className="text-slate-500 max-w-xl mx-auto">{subtext}</p>}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {products.map((p, i) => (
+            <div key={i} className="group rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-lg transition-all">
+              {p.image && (
+                <div className="relative overflow-hidden h-48">
+                  <img
+                    src={p.image}
+                    alt={p.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  {p.badge && (
+                    <span className="absolute top-3 right-3 bg-indigo-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                      {p.badge}
+                    </span>
+                  )}
+                </div>
+              )}
+              <div className="p-5">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <h3 className="font-bold text-slate-900 text-lg leading-tight">{p.name}</h3>
+                  <span className="text-xl font-bold text-indigo-600 whitespace-nowrap shrink-0">
+                    {currency}{p.price}
+                  </span>
+                </div>
+                <p className="text-slate-500 text-sm mb-4 leading-relaxed">{p.description}</p>
+                {(p.cta_text || p.cta_link) && (
+                  <a
+                    href={p.cta_link || "#contact"}
+                    className="block w-full text-center bg-indigo-600 text-white py-2.5 rounded-xl font-semibold text-sm hover:bg-indigo-700 transition-colors"
+                  >
+                    {p.cta_text || "הזמן עכשיו"}
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {products.length === 0 && (
+            <div className="col-span-3 text-center py-12 text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl">
+              הוסף מוצרים בעורך
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ────────────────── PRICING ────────────────── */
+interface PricingPlan {
+  name: string;
+  price: string;
+  period?: string;
+  description?: string;
+  features: string[];
+  cta_text?: string;
+  cta_link?: string;
+  is_featured?: boolean;
+}
+
+export function PricingBlock({ content }: BlockProps) {
+  const heading = str(content.heading) || "תוכניות ומחירים";
+  const subtext = str(content.subtext) || "";
+  const plans   = arr<PricingPlan>(content.plans);
+  const currency = str(content.currency) || "₪";
+
+  return (
+    <section className="py-20 px-6 bg-slate-50">
+      <div className="max-w-5xl mx-auto">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-slate-900 mb-3">{heading}</h2>
+          {subtext && <p className="text-slate-500">{subtext}</p>}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+          {plans.map((plan, i) => (
+            <div
+              key={i}
+              className={`rounded-2xl p-6 ${
+                plan.is_featured
+                  ? "bg-indigo-600 text-white shadow-xl shadow-indigo-200 scale-105"
+                  : "bg-white border border-slate-200 shadow-sm"
+              }`}
+            >
+              <h3 className={`font-bold text-lg mb-1 ${plan.is_featured ? "text-white" : "text-slate-900"}`}>
+                {plan.name}
+              </h3>
+              {plan.description && (
+                <p className={`text-sm mb-4 ${plan.is_featured ? "text-indigo-200" : "text-slate-500"}`}>
+                  {plan.description}
+                </p>
+              )}
+              <div className="mb-6">
+                <span className={`text-4xl font-bold ${plan.is_featured ? "text-white" : "text-indigo-600"}`}>
+                  {currency}{plan.price}
+                </span>
+                {plan.period && (
+                  <span className={`text-sm mr-1 ${plan.is_featured ? "text-indigo-200" : "text-slate-400"}`}>
+                    /{plan.period}
+                  </span>
+                )}
+              </div>
+              <ul className="space-y-2.5 mb-6">
+                {plan.features.map((f, j) => (
+                  <li key={j} className={`flex items-center gap-2 text-sm ${plan.is_featured ? "text-indigo-100" : "text-slate-600"}`}>
+                    <Star className={`h-4 w-4 shrink-0 ${plan.is_featured ? "text-yellow-300" : "text-indigo-400"}`} />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <a
+                href={plan.cta_link || "#contact"}
+                className={`block w-full text-center py-2.5 rounded-xl font-semibold text-sm transition-colors ${
+                  plan.is_featured
+                    ? "bg-white text-indigo-600 hover:bg-indigo-50"
+                    : "bg-indigo-600 text-white hover:bg-indigo-700"
+                }`}
+              >
+                {plan.cta_text || "בחר תוכנית"}
+              </a>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ────────────────── PAYMENT (PayMe) ────────────────── */
+export function PaymentBlock({ content }: BlockProps) {
+  const heading     = str(content.heading)     || "תשלום מאובטח";
+  const subtext     = str(content.subtext)     || "";
+  const productName = str(content.product_name)|| "מוצר / שירות";
+  const price       = num(content.price, 0);
+  const siteId      = str(content.site_id);
+  const [loading, setLoading]   = React.useState(false);
+  const [error, setError]       = React.useState("");
+  const [name, setName]         = React.useState("");
+  const [email, setEmail]       = React.useState("");
+  const [phone, setPhone]       = React.useState("");
+
+  const pay = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!siteId || !price) { setError("פרטי תשלום חסרים — פנה למנהל האתר"); return; }
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/payments/payme", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          site_id: siteId,
+          amount: price * 100, // ILS → agorot
+          description: productName,
+          product_name: productName,
+          buyer_name: name,
+          buyer_email: email,
+          buyer_phone: phone,
+        }),
+      });
+      const data = await res.json() as { payment_url?: string; error?: string };
+      if (data.payment_url) {
+        window.location.href = data.payment_url;
+      } else {
+        setError(data.error ?? "שגיאה ביצירת קישור תשלום");
+      }
+    } catch { setError("שגיאה בחיבור לשרת"); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <section className="py-16 px-6 bg-gradient-to-br from-green-50 to-emerald-50">
+      <div className="max-w-md mx-auto">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-green-600 text-white text-2xl mb-4">🔒</div>
+          <h2 className="text-2xl font-bold text-slate-900">{heading}</h2>
+          {subtext && <p className="text-slate-500 mt-2">{subtext}</p>}
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+          <div className="flex items-center justify-between mb-5 pb-4 border-b border-slate-100">
+            <span className="font-semibold text-slate-800">{productName}</span>
+            <span className="text-2xl font-bold text-green-600">₪{price.toLocaleString()}</span>
+          </div>
+
+          <form onSubmit={pay} className="space-y-3">
+            <input
+              value={name} onChange={e => setName(e.target.value)}
+              placeholder="שם מלא"
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
+            />
+            <input
+              type="email" value={email} onChange={e => setEmail(e.target.value)}
+              placeholder="כתובת אימייל"
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
+              dir="ltr"
+            />
+            <input
+              type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+              placeholder="מספר טלפון"
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
+            />
+            {error && <p className="text-sm text-red-600 text-center">{error}</p>}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm"
+            >
+              {loading ? (
+                <><span className="animate-spin">⏳</span> מועבר לתשלום...</>
+              ) : (
+                <>🔒 לתשלום מאובטח — ₪{price.toLocaleString()}</>
+              )}
+            </button>
+          </form>
+
+          <div className="mt-4 flex items-center justify-center gap-3 text-xs text-slate-400">
+            <span>💳 ויזה / מאסטרקארד</span>
+            <span>·</span>
+            <span>📱 Bit</span>
+            <span>·</span>
+            <span>🔒 SSL מאובטח</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ────────────────── BLOCK ROUTER ────────────────── */
 export function SiteBlock({ block_type, content }: { block_type: string; content: Record<string, unknown> }) {
   const props = { content };
@@ -432,6 +731,10 @@ export function SiteBlock({ block_type, content }: { block_type: string; content
     case "cta":          return <CtaBlock          {...props} />;
     case "image":        return <ImageBlock        {...props} />;
     case "video":        return <VideoBlock        {...props} />;
+    case "booking":      return <BookingBlock      {...props} />;
+    case "products":     return <ProductsBlock     {...props} />;
+    case "pricing":      return <PricingBlock      {...props} />;
+    case "payment":      return <PaymentBlock      {...props} />;
     default:             return null;
   }
 }

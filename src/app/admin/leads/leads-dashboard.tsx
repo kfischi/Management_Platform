@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Target, Plus, TrendingUp, Brain, Mail, MessageSquare,
-  Phone, Star, ArrowRight, X, Loader2,
+  Phone, Star, ArrowRight, X, Loader2, Zap,
 } from "lucide-react";
 
 /* ─── types ─── */
@@ -160,11 +160,81 @@ function NewLeadModal({ defaultStatus, onClose, onSave }: NewLeadModalProps) {
 
 /* ─── main component ─── */
 
+/* ─── Enroll in sequence modal ─── */
+function EnrollModal({ leadId, onClose }: { leadId: string; onClose: () => void }) {
+  const [sequences, setSequences] = React.useState<{ id: string; name: string; trigger: string }[]>([]);
+  const [selected, setSelected] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [enrolling, setEnrolling] = React.useState(false);
+  const [done, setDone] = React.useState(false);
+
+  React.useEffect(() => {
+    fetch("/api/admin/email-sequences")
+      .then(r => r.json())
+      .then((data: { id: string; name: string; trigger: string; is_active: boolean }[]) =>
+        setSequences(data.filter(s => s.is_active))
+      )
+      .finally(() => setLoading(false));
+  }, []);
+
+  const enroll = async () => {
+    if (!selected) return;
+    setEnrolling(true);
+    await fetch(`/api/admin/email-sequences/${selected}/enroll`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lead_ids: [leadId] }),
+    });
+    setEnrolling(false);
+    setDone(true);
+    setTimeout(onClose, 1200);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl" dir="rtl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-slate-800">הרשמה לסדרת אימיילים</h3>
+          <button onClick={onClose}><X className="h-4 w-4 text-slate-400" /></button>
+        </div>
+        {loading ? (
+          <div className="text-center py-8"><Loader2 className="h-6 w-6 animate-spin text-indigo-400 mx-auto" /></div>
+        ) : done ? (
+          <div className="text-center py-8 text-green-600 font-semibold">✓ נרשם בהצלחה!</div>
+        ) : sequences.length === 0 ? (
+          <p className="text-sm text-slate-400 text-center py-4">אין סדרות פעילות. צור סדרה ב<a href="/admin/email-sequences" className="text-indigo-600 underline">ניהול סדרות</a>.</p>
+        ) : (
+          <>
+            <div className="space-y-2 mb-4">
+              {sequences.map(s => (
+                <button
+                  key={s.id}
+                  onClick={() => setSelected(s.id)}
+                  className={`w-full text-right px-3 py-2.5 rounded-xl border text-sm transition-colors ${
+                    selected === s.id ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-200 hover:border-indigo-300"
+                  }`}
+                >
+                  <span className="font-medium">{s.name}</span>
+                </button>
+              ))}
+            </div>
+            <Button onClick={enroll} disabled={!selected || enrolling} className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700">
+              {enrolling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+              הרשם לסדרה
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function LeadsDashboard({ initialLeads }: { initialLeads: Lead[] }) {
   const [leads, setLeads] = React.useState<Lead[]>(initialLeads);
   const [view, setView] = React.useState<"kanban" | "list">("kanban");
   const [newModal, setNewModal] = React.useState<LeadStatus | null>(null);
   const [movingId, setMovingId] = React.useState<string | null>(null);
+  const [enrollModal, setEnrollModal] = React.useState<string | null>(null);
 
   const totalValue = leads.filter(l => l.status === "won").reduce((s, l) => s + l.value, 0);
   const pipelineValue = leads.filter(l => !["won","lost"].includes(l.status)).reduce((s, l) => s + l.value, 0);
@@ -296,6 +366,13 @@ export function LeadsDashboard({ initialLeads }: { initialLeads: Lead[] }) {
                           <a href={`https://wa.me/${lead.phone?.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer" className="flex h-6 w-6 items-center justify-center rounded hover:bg-accent transition-colors" title="WhatsApp">
                             <MessageSquare className="h-3 w-3 text-slate-500" />
                           </a>
+                          <button
+                            className="flex h-6 w-6 items-center justify-center rounded hover:bg-accent transition-colors"
+                            title="הרשם לסדרת אימיילים"
+                            onClick={() => setEnrollModal(lead.id)}
+                          >
+                            <Zap className="h-3 w-3 text-indigo-400" />
+                          </button>
                           {/* Advance status */}
                           {col.status !== "won" && col.status !== "lost" && (
                             <button
@@ -388,6 +465,11 @@ export function LeadsDashboard({ initialLeads }: { initialLeads: Lead[] }) {
           onClose={() => setNewModal(null)}
           onSave={(lead) => setLeads((prev) => [lead, ...prev])}
         />
+      )}
+
+      {/* Enroll in sequence modal */}
+      {enrollModal && (
+        <EnrollModal leadId={enrollModal} onClose={() => setEnrollModal(null)} />
       )}
     </div>
   );

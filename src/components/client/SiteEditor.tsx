@@ -42,6 +42,10 @@ const BLOCK_META: Record<string, { label: string; icon: React.ReactNode; color: 
   faq:          { label: "שאלות נפוצות",   icon: <HelpCircle className="h-4 w-4" />, color: "bg-indigo-100 text-indigo-700",  emoji: "❓" },
   testimonials: { label: "המלצות",          icon: <Star className="h-4 w-4" />,       color: "bg-pink-100 text-pink-700",      emoji: "💬" },
   video:        { label: "וידאו",            icon: <Video className="h-4 w-4" />,      color: "bg-gray-100 text-gray-700",      emoji: "🎥" },
+  booking:      { label: "קביעת תור",        icon: <Phone className="h-4 w-4" />,      color: "bg-cyan-100 text-cyan-700",      emoji: "📅" },
+  products:     { label: "מוצרים / חנות",   icon: <Layers className="h-4 w-4" />,    color: "bg-emerald-100 text-emerald-700", emoji: "🛍️" },
+  pricing:      { label: "מחירון",            icon: <Star className="h-4 w-4" />,       color: "bg-amber-100 text-amber-700",    emoji: "💰" },
+  payment:      { label: "תשלום PayMe",       icon: <Send className="h-4 w-4" />,       color: "bg-green-100 text-green-700",    emoji: "💳" },
 };
 
 /* ─── Add Block modal ─── */
