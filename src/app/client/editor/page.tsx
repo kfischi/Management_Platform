@@ -13,6 +13,14 @@ export default async function EditorPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
+  // Check if this user is an admin
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+  const isAdmin = profile?.role === "admin";
+
   // Get the client's site
   const { data: sitesRaw } = await supabase
     .from("sites")
@@ -52,6 +60,7 @@ export default async function EditorPage() {
       initialPages={pages}
       initialSettings={settings}
       clientPermissions={clientPermissions}
+      isAdmin={isAdmin}
     />
   );
 }
