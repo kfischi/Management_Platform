@@ -12,28 +12,35 @@ import { cn } from "@/lib/utils";
 /* ─────────── breadcrumb config ─────────── */
 
 const ROUTE_LABELS: Record<string, string> = {
-  admin:            "מערכת ניהול",
-  dashboard:        "דשבורד",
-  sites:            "אתרים",
-  leads:            "לידים",
-  crm:              "CRM",
-  clients:          "לקוחות",
-  contracts:        "חוזים",
-  payments:         "תשלומים",
-  users:            "משתמשים",
-  proposals:        "הצעות מחיר",
-  social:           "רשתות חברתיות",
-  calendar:         "לוח תוכן",
-  seo:              "SEO",
-  automations:      "אוטומציות",
-  infrastructure:   "תשתיות",
-  settings:         "הגדרות",
-  communications:   "תקשורת",
-  media:            "מדיה",
-  "ai-tools":       "AI & Chatbots",
-  domains:          "דומיינים",
-  command:          "AI Command",
-  "clients-health": "Client Health",
+  admin:              "מערכת ניהול",
+  dashboard:          "דשבורד",
+  sites:              "אתרים",
+  leads:              "לידים",
+  pipeline:           "Pipeline מכירות",
+  crm:                "CRM",
+  clients:            "לקוחות",
+  contracts:          "חוזים",
+  payments:           "תשלומים",
+  billing:            "חיובים & חשבוניות",
+  users:              "משתמשים",
+  proposals:          "הצעות מחיר",
+  social:             "רשתות חברתיות",
+  calendar:           "לוח תוכן",
+  seo:                "SEO",
+  automations:        "אוטומציות",
+  infrastructure:     "תשתיות",
+  settings:           "הגדרות",
+  communications:     "תקשורת",
+  media:              "מדיה",
+  "ai-tools":         "AI & Chatbots",
+  "chatbot-builder":  "Chatbot Builder",
+  domains:            "דומיינים",
+  command:            "AI Command",
+  "clients-health":   "Client Health",
+  revenue:            "Revenue Dashboard",
+  "email-sequences":  "סדרות אימיילים",
+  "site-analytics":   "אנליטיקס אתרים",
+  "site-auditor":     "AI Site Auditor",
 };
 
 function useBreadcrumbs() {
@@ -110,13 +117,29 @@ export function AdminHeader({ title, userEmail, userAvatar, userName }: AdminHea
     : userEmail?.slice(0, 2).toUpperCase() ?? "AD";
 
   async function loadNotifications() {
-    if (notifLoaded) return;
     try {
       const res = await fetch("/api/client/notifications");
       if (res.ok) setNotifications(await res.json());
     } catch { /* silent */ }
     setNotifLoaded(true);
   }
+
+  // Realtime subscription for live notifications
+  useEffect(() => {
+    loadNotifications();
+    const channel = supabase.channel("admin-notifications")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "notifications" },
+        (payload) => {
+          const n = payload.new as Notification;
+          setNotifications(prev => [n, ...prev]);
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function markAllRead() {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
@@ -136,7 +159,6 @@ export function AdminHeader({ title, userEmail, userAvatar, userName }: AdminHea
 
   function handleBellClick() {
     setNotifOpen((v) => !v);
-    if (!notifLoaded) loadNotifications();
   }
 
   return (

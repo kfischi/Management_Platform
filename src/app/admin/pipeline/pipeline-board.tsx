@@ -5,9 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Loader2, RefreshCw, ChevronRight, ChevronLeft,
+  Loader2, RefreshCw, ChevronRight,
   Rocket, Eye, FileText, CheckCircle2,
   Building2, Star, Plus, Link2, Check as CheckIcon,
+  Mail, ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import OnboardingWizard from "./onboarding-wizard";
@@ -132,6 +133,7 @@ function LeadCard({
   const nextStage = NEXT_STAGE[lead.pipeline_stage];
   const isAdvancing = advancing === lead.id;
   const [copied, setCopied] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
   const siteReviewToken = lead.sites?.[0]?.review_token;
 
   function copyReviewLink() {
@@ -141,6 +143,26 @@ function LeadCard({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  }
+
+  async function sendReviewEmail() {
+    if (!siteReviewToken || !lead.email || emailSending) return;
+    setEmailSending(true);
+    try {
+      const url = `${window.location.origin}/review/${siteReviewToken}`;
+      await fetch("/api/admin/communications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          channel: "email",
+          to: lead.email,
+          subject: `האתר שלך מוכן לאישור — ${lead.name}`,
+          message: `שלום ${lead.name},<br><br>האתר שלך מוכן לסקירה ואישור.<br><br>לחץ על הקישור הבא כדי לצפות ולאשר: <a href="${url}">${url}</a><br><br>בברכה`,
+        }),
+      });
+    } finally {
+      setEmailSending(false);
+    }
   }
 
   return (
@@ -176,8 +198,23 @@ function LeadCard({
         </div>
       )}
 
-      {/* Advance button */}
-      {nextStage && (
+      {/* Advance button — for `lead` stage, open create-proposal page */}
+      {nextStage && lead.pipeline_stage === "lead" && (
+        <a
+          href={`/admin/proposals?lead_id=${lead.id}&client_name=${encodeURIComponent(lead.name)}&client_email=${encodeURIComponent(lead.email)}&project_name=${encodeURIComponent(lead.company || lead.name)}&value=${lead.value}`}
+          className={cn(
+            "w-full mt-1 flex items-center justify-center gap-1.5 text-xs font-medium rounded-lg py-1.5 transition-all",
+            stageConfig.bg, stageConfig.color, stageConfig.border, "border",
+            "hover:brightness-95"
+          )}
+        >
+          <FileText className="h-3 w-3" />
+          {NEXT_ACTION[lead.pipeline_stage]}
+        </a>
+      )}
+
+      {/* Advance button — all other stages */}
+      {nextStage && lead.pipeline_stage !== "lead" && (
         <button
           onClick={() => onAdvance(lead.id, nextStage)}
           disabled={isAdvancing}
@@ -196,20 +233,33 @@ function LeadCard({
         </button>
       )}
 
-      {/* Copy review link button for review stage */}
+      {/* Review stage: copy + email buttons */}
       {lead.pipeline_stage === "review" && siteReviewToken && (
-        <button
-          onClick={copyReviewLink}
-          className="w-full mt-1.5 flex items-center justify-center gap-1.5 text-xs font-medium rounded-lg py-1.5 bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors"
-        >
-          {copied ? <CheckIcon className="h-3 w-3 text-green-600" /> : <Link2 className="h-3 w-3" />}
-          {copied ? "הועתק!" : "העתק קישור לסקירה"}
-        </button>
+        <div className="mt-1.5 flex gap-1.5">
+          <button
+            onClick={copyReviewLink}
+            className="flex-1 flex items-center justify-center gap-1 text-xs font-medium rounded-lg py-1.5 bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors"
+          >
+            {copied ? <CheckIcon className="h-3 w-3 text-green-600" /> : <Link2 className="h-3 w-3" />}
+            {copied ? "הועתק!" : "קישור"}
+          </button>
+          {lead.email && (
+            <button
+              onClick={sendReviewEmail}
+              disabled={emailSending}
+              className="flex-1 flex items-center justify-center gap-1 text-xs font-medium rounded-lg py-1.5 bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 transition-colors disabled:opacity-50"
+            >
+              {emailSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />}
+              {emailSending ? "שולח..." : "שלח מייל"}
+            </button>
+          )}
+        </div>
       )}
 
+      {/* Live site — show link if available */}
       {lead.pipeline_stage === "live" && (
         <div className="w-full mt-1 flex items-center justify-center gap-1.5 text-xs font-medium rounded-lg py-1.5 bg-green-50 text-green-600 border border-green-200">
-          <Rocket className="h-3 w-3" /> חי!
+          <Rocket className="h-3 w-3" /> חי! 🚀
         </div>
       )}
     </div>
