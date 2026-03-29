@@ -5,27 +5,50 @@ import { Button } from "@/components/ui/button";
 import {
   Globe, Users, CreditCard, Zap, TrendingUp, AlertCircle,
   CheckCircle2, Clock, ArrowUpRight, Brain, Target, Heart,
-  Sparkles, BarChart3, Activity, Plus, Command
+  Sparkles, BarChart3, Activity, Plus, Command, Filter
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import Link from "next/link";
+import type { Database } from "@/types/database";
+
+type SiteRow = Database["public"]["Tables"]["sites"]["Row"];
+type PaymentRow = Database["public"]["Tables"]["payments"]["Row"] & {
+  clients: { contact_name: string } | null;
+};
+type PipelineEventRow = Database["public"]["Tables"]["pipeline_events"]["Row"] & {
+  leads: { name: string } | null;
+};
 
 async function getStats(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const [sites, clients, payments, automations] = await Promise.all([
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const [sites, clients, payments, automations, leadsToday, pipelineLeads] = await Promise.all([
     supabase.from("sites").select("id, status", { count: "exact" }),
     supabase.from("clients").select("id, status", { count: "exact" }),
     supabase.from("payments").select("amount, status"),
     supabase.from("automations").select("id, is_active"),
+    supabase.from("leads").select("id", { count: "exact" }).gte("created_at", todayStart.toISOString()),
+    supabase.from("leads").select("value, status, pipeline_stage").neq("status", "lost").neq("pipeline_stage", "live"),
   ]);
 
-  const totalRevenue = payments.data?.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0) ?? 0;
-  const pendingRevenue = payments.data?.filter(p => p.status === "pending").reduce((s, p) => s + p.amount, 0) ?? 0;
+  const sitesData = (sites.data ?? []) as { id: string; status: string }[];
+  const clientsData = (clients.data ?? []) as { id: string; status: string }[];
+  const paymentsData = (payments.data ?? []) as { amount: number; status: string }[];
+  const automationsData = (automations.data ?? []) as { id: string; is_active: boolean }[];
+  const pipelineLeadsData = (pipelineLeads.data ?? []) as { value: number | null; status: string; pipeline_stage: string }[];
+
+  const totalRevenue = paymentsData.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0);
+  const pendingRevenue = paymentsData.filter(p => p.status === "pending").reduce((s, p) => s + p.amount, 0);
+  const pipelineValue = pipelineLeadsData.reduce((s, l) => s + (l.value ?? 0), 0);
 
   return {
-    sites: { total: sites.count ?? 0, active: sites.data?.filter(s => s.status === "active").length ?? 0 },
-    clients: { total: clients.count ?? 0, active: clients.data?.filter(c => c.status === "active").length ?? 0 },
+    sites: { total: sites.count ?? 0, active: sitesData.filter(s => s.status === "active").length },
+    clients: { total: clients.count ?? 0, active: clientsData.filter(c => c.status === "active").length },
     revenue: { total: totalRevenue, pending: pendingRevenue },
-    automations: { total: automations.count ?? 0, active: automations.data?.filter(a => a.is_active).length ?? 0 },
+    automations: { total: automations.count ?? 0, active: automationsData.filter(a => a.is_active).length },
+    leads: { today: leadsToday.count ?? 0 },
+    pipeline: { value: pipelineValue },
   };
 }
 
@@ -33,11 +56,20 @@ export default async function AdminDashboard() {
   const supabase = await createClient();
   const stats = await getStats(supabase);
 
-  const { data: recentSites } = await supabase
+  const { data: recentSitesRaw } = await supabase
     .from("sites").select("*").order("created_at", { ascending: false }).limit(4);
+  const recentSites = (recentSitesRaw ?? []) as SiteRow[];
 
-  const { data: overduePayments } = await supabase
+  const { data: overduePaymentsRaw } = await supabase
     .from("payments").select("*, clients(contact_name)").eq("status", "overdue").limit(5);
+  const overduePayments = (overduePaymentsRaw ?? []) as PaymentRow[];
+
+  const { data: recentPipelineEventsRaw } = await supabase
+    .from("pipeline_events")
+    .select("id, from_stage, to_stage, created_at, leads(name)")
+    .order("created_at", { ascending: false })
+    .limit(5);
+  const recentPipelineEvents = (recentPipelineEventsRaw ?? []) as PipelineEventRow[];
 
   const statusConfig: Record<string, { label: string; dot: string }> = {
     active: { label: "פעיל", dot: "bg-emerald-500" },
@@ -70,6 +102,12 @@ export default async function AdminDashboard() {
       sub: `מתוך ${stats.automations.total} workflows`,
       icon: Zap, color: "text-orange-600", bg: "bg-orange-50",
       href: "/admin/automations", change: "פעיל"
+    },
+    {
+      title: "Pipeline", value: formatCurrency(stats.pipeline.value),
+      sub: `${stats.leads.today} לידים היום`,
+      icon: Filter, color: "text-indigo-600", bg: "bg-indigo-50",
+      href: "/admin/leads", change: `+${stats.leads.today}`
     },
   ];
 

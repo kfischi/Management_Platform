@@ -6,9 +6,6 @@ const nextConfig: NextConfig = {
     // Remove this when Supabase env vars are configured
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "*.supabase.co" },

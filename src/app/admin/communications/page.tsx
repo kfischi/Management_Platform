@@ -1,24 +1,101 @@
+"use client";
+
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageSquare, Mail, Send, Phone, Users, Plus, CheckCircle2, Clock, TrendingUp } from "lucide-react";
+import { MessageSquare, Mail, Send, Phone, Users, Plus, CheckCircle2, Clock, TrendingUp, Loader2, RefreshCw, Bell } from "lucide-react";
 
-const mockConversations = [
-  { id: "c1", contact: "ישראל ישראלי", phone: "+972501234567", lastMessage: "תודה רבה על השירות!", time: "לפני 5 דק׳", unread: 0, status: "answered" },
-  { id: "c2", contact: "שרה כהן", phone: "+972521234567", lastMessage: "מתי תהיה המצגת מוכנה?", time: "לפני 23 דק׳", unread: 2, status: "pending" },
-  { id: "c3", contact: "דוד לוי", phone: "+972531234567", lastMessage: "אני רוצה לשדרג את החבילה", time: "לפני שעה", unread: 1, status: "pending" },
-];
+interface NotificationRow {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  body: string;
+  link: string | null;
+  read: boolean;
+  created_at: string;
+}
 
-const mockEmails = [
-  { id: "e1", to: "client@example.com", subject: "ברוכים הבאים ל-NBH!", status: "delivered", sentAt: "היום, 09:00" },
-  { id: "e2", to: "lead@example.com", subject: "הצעת מחיר לאתר", status: "opened", sentAt: "אתמול, 14:30" },
-  { id: "e3", to: "partner@example.com", subject: "תזכורת פגישה", status: "sent", sentAt: "אתמול, 10:00" },
-];
+interface ResendEmail {
+  id: string;
+  to: string[];
+  subject: string;
+  created_at: string;
+  last_event: string;
+}
+
+interface CommData {
+  notifications: NotificationRow[];
+  whatsappConnected: boolean;
+  resendConnected: boolean;
+  resendEmails: ResendEmail[];
+  stats: { totalNotifications: number; unread: number };
+}
+
+const EMPTY: CommData = {
+  notifications: [],
+  whatsappConnected: false,
+  resendConnected: false,
+  resendEmails: [],
+  stats: { totalNotifications: 0, unread: 0 },
+};
 
 export default function CommunicationsPage() {
-  const pendingCount = mockConversations.filter(c => c.status === "pending").length;
-  const totalUnread = mockConversations.reduce((sum, c) => sum + c.unread, 0);
+  const [data, setData] = useState<CommData>(EMPTY);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState<string | null>(null);
+
+  // WhatsApp send form
+  const [waPhone, setWaPhone] = useState("");
+  const [waMsg, setWaMsg] = useState("");
+  // Email send form
+  const [emailTo, setEmailTo] = useState("");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailMsg, setEmailMsg] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/communications");
+      if (res.ok) setData(await res.json());
+    } catch { /* keep empty */ }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function send(channel: "whatsapp" | "email") {
+    setSending(true);
+    setSendResult(null);
+    const body = channel === "whatsapp"
+      ? { channel, to: waPhone, message: waMsg }
+      : { channel, to: emailTo, message: emailMsg, subject: emailSubject };
+
+    try {
+      const res = await fetch("/api/admin/communications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        setSendResult("✓ נשלח בהצלחה!");
+        if (channel === "whatsapp") { setWaPhone(""); setWaMsg(""); }
+        else { setEmailTo(""); setEmailSubject(""); setEmailMsg(""); }
+        await load();
+      } else {
+        setSendResult(`שגיאה: ${json.error}`);
+      }
+    } catch {
+      setSendResult("שגיאת רשת");
+    }
+    setSending(false);
+  }
+
+  const { notifications, whatsappConnected, resendConnected, resendEmails, stats } = data;
 
   return (
     <div className="space-y-6">
@@ -26,13 +103,13 @@ export default function CommunicationsPage() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">תקשורת</h2>
           <p className="text-muted-foreground">
-            {totalUnread} הודעות לא נקראו · {pendingCount} שיחות ממתינות
+            {stats.unread} הודעות לא נקראו · {notifications.length} נוטיפיקציות
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
-            <Mail className="h-4 w-4" />
-            אימייל חדש
+          <Button variant="outline" size="sm" className="gap-2" onClick={load} disabled={loading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            רענן
           </Button>
           <Button className="gap-2">
             <MessageSquare className="h-4 w-4" />
@@ -44,10 +121,10 @@ export default function CommunicationsPage() {
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-4">
         {[
-          { label: "שיחות WhatsApp", value: mockConversations.length, icon: MessageSquare, color: "text-green-600", bg: "bg-green-50" },
-          { label: "אימיילים נשלחו", value: "124", icon: Mail, color: "text-blue-600", bg: "bg-blue-50" },
-          { label: "SMS נשלחו", value: "45", icon: Phone, color: "text-purple-600", bg: "bg-purple-50" },
-          { label: "קמפיינים פעילים", value: "3", icon: TrendingUp, color: "text-orange-600", bg: "bg-orange-50" },
+          { label: "נוטיפיקציות", value: stats.totalNotifications, icon: Bell, color: "text-purple-600", bg: "bg-purple-50" },
+          { label: "לא נקראו", value: stats.unread, icon: MessageSquare, color: "text-green-600", bg: "bg-green-50" },
+          { label: "אימיילים", value: resendEmails.length, icon: Mail, color: "text-blue-600", bg: "bg-blue-50" },
+          { label: "WhatsApp", value: whatsappConnected ? "מחובר" : "לא מחובר", icon: Phone, color: whatsappConnected ? "text-green-600" : "text-gray-400", bg: whatsappConnected ? "bg-green-50" : "bg-gray-50" },
         ].map((s) => {
           const Icon = s.icon;
           return (
@@ -66,8 +143,12 @@ export default function CommunicationsPage() {
         })}
       </div>
 
-      <Tabs defaultValue="whatsapp">
+      <Tabs defaultValue="notifications">
         <TabsList className="grid w-full grid-cols-3 max-w-sm">
+          <TabsTrigger value="notifications" className="gap-1.5">
+            <Bell className="h-3.5 w-3.5" />
+            נוטיפיקציות
+          </TabsTrigger>
           <TabsTrigger value="whatsapp" className="gap-1.5">
             <MessageSquare className="h-3.5 w-3.5" />
             WhatsApp
@@ -76,94 +157,113 @@ export default function CommunicationsPage() {
             <Mail className="h-3.5 w-3.5" />
             אימייל
           </TabsTrigger>
-          <TabsTrigger value="campaigns" className="gap-1.5">
-            <Send className="h-3.5 w-3.5" />
-            קמפיינים
-          </TabsTrigger>
         </TabsList>
+
+        {/* Notifications */}
+        <TabsContent value="notifications" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">נוטיפיקציות מערכת</CardTitle>
+              <CardDescription className="text-xs">הודעות שנשלחו למשתמשים מהמערכת</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+              ) : notifications.length === 0 ? (
+                <div className="text-center py-8">
+                  <Bell className="h-10 w-10 text-muted-foreground/40 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">אין נוטיפיקציות עדיין</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {notifications.map(n => (
+                    <div key={n.id} className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${!n.read ? "bg-primary/5 border border-primary/10" : "hover:bg-accent/40"}`}>
+                      <div className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${!n.read ? "bg-primary" : "bg-transparent"}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-medium truncate">{n.title}</p>
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            {new Date(n.created_at).toLocaleDateString("he-IL")}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">{n.body}</p>
+                        <Badge variant="secondary" className="text-xs mt-1">{n.type}</Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* WhatsApp */}
         <TabsContent value="whatsapp" className="space-y-4 mt-4">
-          <Card className="border-green-200 bg-green-50/30">
+          <Card className={whatsappConnected ? "border-green-200 bg-green-50/30" : "border-amber-200 bg-amber-50/30"}>
             <CardContent className="p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <span className="text-3xl">💬</span>
                 <div>
-                  <p className="font-medium">WhatsApp Business API</p>
-                  <p className="text-xs text-muted-foreground">מחובר דרך Meta Cloud API · דרך N8N Evolution API</p>
+                  <p className="font-medium">WhatsApp Business</p>
+                  <p className="text-xs text-muted-foreground">
+                    {whatsappConnected ? "מחובר דרך Evolution API / N8N" : "לא מוגדר — הגדר בהגדרות"}
+                  </p>
                 </div>
               </div>
-              <Badge variant="success">מחובר</Badge>
+              <Badge variant={whatsappConnected ? "success" : "warning"}>
+                {whatsappConnected ? "מחובר" : "לא מחובר"}
+              </Badge>
             </CardContent>
           </Card>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            {/* Conversations */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">שיחות פעילות</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {mockConversations.map((conv) => (
-                  <div key={conv.id} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-accent/50 cursor-pointer transition-colors">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-green-100 shrink-0">
-                      <span className="text-sm font-medium text-green-700">
-                        {conv.contact.split(" ")[0][0]}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <p className="font-medium text-sm">{conv.contact}</p>
-                        <span className="text-xs text-muted-foreground">{conv.time}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate">{conv.lastMessage}</p>
-                    </div>
-                    {conv.unread > 0 && (
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-white text-xs shrink-0">
-                        {conv.unread}
-                      </div>
-                    )}
-                  </div>
-                ))}
+          {!whatsappConnected && (
+            <Card className="border-dashed">
+              <CardContent className="p-6 text-center">
+                <p className="text-sm text-muted-foreground mb-3">
+                  כדי לשלוח הודעות WhatsApp, הגדר Evolution API URL ו-API Key בהגדרות.
+                </p>
+                <Button variant="outline" size="sm" onClick={() => window.location.href = "/admin/settings"}>
+                  עבור להגדרות
+                </Button>
               </CardContent>
             </Card>
+          )}
 
-            {/* Quick Send */}
+          {whatsappConnected && (
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">שלח הודעה</CardTitle>
+                <CardTitle className="text-sm">שלח הודעת WhatsApp</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <input
                   type="tel"
+                  value={waPhone}
+                  onChange={e => setWaPhone(e.target.value)}
                   placeholder="+972501234567"
                   className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                   dir="ltr"
                 />
                 <textarea
+                  value={waMsg}
+                  onChange={e => setWaMsg(e.target.value)}
                   placeholder="כתוב הודעת WhatsApp..."
                   rows={4}
                   className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
                 />
+                {sendResult && (
+                  <p className={`text-sm ${sendResult.startsWith("✓") ? "text-green-600" : "text-red-600"}`}>{sendResult}</p>
+                )}
                 <div className="flex gap-2">
-                  <Button size="sm" variant="outline" className="gap-1">
-                    📎 קובץ
-                  </Button>
-                  <Button size="sm" variant="outline" className="gap-1">
-                    🖼️ תמונה
-                  </Button>
-                  <Button size="sm" className="flex-1 gap-1">
-                    <Send className="h-3.5 w-3.5" />
+                  <Button size="sm" className="flex-1 gap-1" onClick={() => send("whatsapp")} disabled={sending || !waPhone || !waMsg}>
+                    {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                     שלח
                   </Button>
                 </div>
-
-                {/* Templates */}
                 <div className="border-t pt-3">
                   <p className="text-xs text-muted-foreground mb-2">תבניות מהירות:</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {["ברוך הבא!", "תזכורת תשלום", "האתר שלך עלה!", "פגישה מחר"].map((t) => (
-                      <button key={t} className="text-xs bg-accent rounded px-2 py-1 hover:bg-accent/80 transition-colors">
+                    {["ברוך הבא! 👋", "תזכורת תשלום", "האתר שלך עלה! 🚀", "פגישה מחר ב-10:00"].map((t) => (
+                      <button key={t} onClick={() => setWaMsg(t)} className="text-xs bg-accent rounded px-2 py-1 hover:bg-accent/80 transition-colors">
                         {t}
                       </button>
                     ))}
@@ -171,106 +271,119 @@ export default function CommunicationsPage() {
                 </div>
               </CardContent>
             </Card>
-          </div>
+          )}
         </TabsContent>
 
         {/* Email */}
         <TabsContent value="email" className="space-y-4 mt-4">
-          <div className="grid gap-4 sm:grid-cols-3">
-            {[
-              { name: "Resend", status: true, icon: "📧", sent: "89" },
-              { name: "SendGrid", status: false, icon: "📬", sent: "—" },
-              { name: "SMTP Custom", status: false, icon: "📮", sent: "—" },
-            ].map((provider) => (
-              <Card key={provider.name} className={provider.status ? "border-blue-200 bg-blue-50/30" : ""}>
-                <CardContent className="p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">{provider.icon}</span>
-                    <div>
-                      <p className="font-medium text-sm">{provider.name}</p>
-                      <p className="text-xs text-muted-foreground">{provider.sent} נשלחו</p>
-                    </div>
-                  </div>
-                  <Badge variant={provider.status ? "success" : "secondary"} className="text-xs">
-                    {provider.status ? "פעיל" : "לא מוגדר"}
-                  </Badge>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm">אימיילים אחרונים</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {mockEmails.map((email) => (
-                  <div key={email.id} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-accent/50 transition-colors">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{email.subject}</p>
-                        <p className="text-xs text-muted-foreground">{email.to}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs text-muted-foreground">{email.sentAt}</span>
-                      <Badge
-                        variant={email.status === "delivered" || email.status === "opened" ? "success" : "info"}
-                        className="text-xs"
-                      >
-                        {email.status === "delivered" ? "נמסר" : email.status === "opened" ? "נפתח" : "נשלח"}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
+          <Card className={resendConnected ? "border-blue-200 bg-blue-50/30" : "border-amber-200 bg-amber-50/30"}>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">📧</span>
+                <div>
+                  <p className="font-medium">Resend Email</p>
+                  <p className="text-xs text-muted-foreground">
+                    {resendConnected ? `${resendEmails.length} אימיילים נשלחו` : "לא מוגדר — הגדר Resend API Key בהגדרות"}
+                  </p>
+                </div>
               </div>
+              <Badge variant={resendConnected ? "success" : "warning"}>
+                {resendConnected ? "מחובר" : "לא מחובר"}
+              </Badge>
             </CardContent>
           </Card>
-        </TabsContent>
 
-        {/* Campaigns */}
-        <TabsContent value="campaigns" className="space-y-4 mt-4">
-          <div className="grid gap-4 sm:grid-cols-3">
-            {[
-              { name: "קמפיין ברוך הבא", type: "WhatsApp", status: "פעיל", sent: 45, opened: "100%" },
-              { name: "תזכורת חודשית", type: "Email", status: "פעיל", sent: 120, opened: "67%" },
-              { name: "אפסייל חבילות", type: "Email + SMS", status: "טיוטה", sent: 0, opened: "—" },
-            ].map((campaign) => (
-              <Card key={campaign.name} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <p className="font-medium text-sm">{campaign.name}</p>
-                      <Badge variant="secondary" className="text-xs mt-1">{campaign.type}</Badge>
-                    </div>
-                    <Badge variant={campaign.status === "פעיל" ? "success" : "warning"} className="text-xs">
-                      {campaign.status}
-                    </Badge>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                    <div>
-                      <p className="font-medium text-foreground text-base">{campaign.sent}</p>
-                      <p>נשלחו</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground text-base">{campaign.opened}</p>
-                      <p>פתיחות</p>
-                    </div>
-                  </div>
-                  <Button size="sm" variant="outline" className="w-full mt-3 text-xs">
-                    ערוך קמפיין
+          {resendConnected && (
+            <div className="grid gap-4 lg:grid-cols-2">
+              {/* Send form */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">שלח אימייל</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <input
+                    type="email"
+                    value={emailTo}
+                    onChange={e => setEmailTo(e.target.value)}
+                    placeholder="to@example.com"
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    dir="ltr"
+                  />
+                  <input
+                    type="text"
+                    value={emailSubject}
+                    onChange={e => setEmailSubject(e.target.value)}
+                    placeholder="נושא האימייל"
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <textarea
+                    value={emailMsg}
+                    onChange={e => setEmailMsg(e.target.value)}
+                    placeholder="תוכן ההודעה..."
+                    rows={4}
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                  />
+                  {sendResult && (
+                    <p className={`text-sm ${sendResult.startsWith("✓") ? "text-green-600" : "text-red-600"}`}>{sendResult}</p>
+                  )}
+                  <Button size="sm" className="w-full gap-1" onClick={() => send("email")} disabled={sending || !emailTo || !emailMsg}>
+                    {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                    שלח אימייל
                   </Button>
                 </CardContent>
               </Card>
-            ))}
-          </div>
 
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            קמפיין חדש
-          </Button>
+              {/* Sent emails */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">אימיילים אחרונים</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {resendEmails.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">אין אימיילים עדיין</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {resendEmails.map(email => (
+                        <div key={email.id} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-accent/50 transition-colors">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{email.subject}</p>
+                              <p className="text-xs text-muted-foreground">{email.to?.join(", ")}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(email.created_at).toLocaleDateString("he-IL")}
+                            </span>
+                            <Badge
+                              variant={email.last_event === "delivered" || email.last_event === "opened" ? "success" : "info"}
+                              className="text-xs"
+                            >
+                              {email.last_event === "delivered" ? "נמסר" : email.last_event === "opened" ? "נפתח" : email.last_event ?? "נשלח"}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {!resendConnected && (
+            <Card className="border-dashed">
+              <CardContent className="p-6 text-center">
+                <p className="text-sm text-muted-foreground mb-3">
+                  כדי לשלוח אימיילים, הגדר Resend API Key בהגדרות.
+                </p>
+                <Button variant="outline" size="sm" onClick={() => window.location.href = "/admin/settings"}>
+                  עבור להגדרות
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>

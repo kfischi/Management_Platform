@@ -24,7 +24,7 @@ export function ClientSidebar() {
           <Building2 className="h-4 w-4 text-white" />
         </div>
         <div>
-          <p className="text-sm font-semibold">NBH Agency</p>
+          <p className="text-sm font-semibold">WMA Agency</p>
           <p className="text-xs text-muted-foreground">Client Portal</p>
         </div>
       </div>

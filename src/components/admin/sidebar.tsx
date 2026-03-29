@@ -6,7 +6,8 @@ import {
   LayoutDashboard, Globe, Users, FileText, CreditCard,
   Zap, Server, Bot, MessageSquare, Image, Settings,
   Building2, Target, Share2, Brain, Calendar,
-  Search, Heart, Globe2, Receipt
+  Search, Heart, Globe2, Receipt, Mail, BarChart2,
+  TrendingUp, Sparkles, GitBranch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,10 +23,12 @@ const navItems = [
     title: "CRM & לידים",
     items: [
       { title: "לידים", href: "/admin/leads", icon: Target },
+      { title: "Pipeline מכירות", href: "/admin/pipeline", icon: GitBranch, badge: "NEW" },
       { title: "לקוחות", href: "/admin/crm/clients", icon: Users },
+      { title: "Revenue Dashboard", href: "/admin/revenue", icon: TrendingUp, badge: "NEW" },
+      { title: "חיובים & חשבוניות", href: "/admin/billing", icon: CreditCard },
       { title: "חוזים", href: "/admin/crm/contracts", icon: FileText },
-      { title: "תשלומים", href: "/admin/crm/payments", icon: CreditCard },
-      { title: "Client Health", href: "/admin/clients-health", icon: Heart, badge: "NEW" },
+      { title: "Client Health", href: "/admin/clients-health", icon: Heart },
     ],
   },
   {
@@ -35,6 +38,7 @@ const navItems = [
       { title: "רשתות חברתיות", href: "/admin/social", icon: Share2 },
       { title: "הצעות מחיר", href: "/admin/proposals", icon: Receipt },
       { title: "תקשורת", href: "/admin/communications", icon: MessageSquare },
+      { title: "סדרות אימיילים", href: "/admin/email-sequences", icon: Mail, badge: "NEW" },
     ],
   },
   {
@@ -51,6 +55,9 @@ const navItems = [
       { title: "אוטומציות N8N", href: "/admin/automations", icon: Zap },
       { title: "תשתיות Coolify", href: "/admin/infrastructure", icon: Server },
       { title: "AI & Chatbots", href: "/admin/ai-tools", icon: Bot },
+      { title: "Chatbot Builder", href: "/admin/chatbot-builder", icon: MessageSquare, badge: "NEW" },
+      { title: "AI Site Auditor", href: "/admin/site-auditor", icon: Sparkles, badge: "AI" },
+      { title: "אנליטיקס אתרים", href: "/admin/site-analytics", icon: BarChart2 },
       { title: "מדיה", href: "/admin/media", icon: Image },
     ],
   },
@@ -74,7 +81,7 @@ export function AdminSidebar() {
           <Building2 className="h-4 w-4 text-white" />
         </div>
         <div>
-          <p className="text-sm font-bold text-white">NBH Agency</p>
+          <p className="text-sm font-bold text-white">WMA Agency</p>
           <p className="text-[10px] text-slate-400">Management Platform</p>
         </div>
       </div>

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import * as React from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Globe, Shield, AlertTriangle, CheckCircle2,
-  Clock, Bell, Plus, ExternalLink, RefreshCw, X, Zap
+  Clock, Bell, Plus, ExternalLink, RefreshCw, X, Zap, Loader2
 } from "lucide-react";
 
 interface DomainRecord {
@@ -28,13 +29,13 @@ interface DomainRecord {
 
 const domains: DomainRecord[] = [
   {
-    id: "d1", domain: "nbh.co.il", client: "NBH Agency (אנחנו)",
+    id: "d1", domain: "wma.co.il", client: "WMA Agency (אנחנו)",
     registrar: "Namecheap", expiresAt: "2027-03-15", daysUntilExpiry: 357,
     sslExpiresAt: "2026-06-22", sslDaysLeft: 91, sslIssuer: "Let's Encrypt",
     status: "healthy", sslStatus: "valid",
     dns: [
       { type: "A", name: "@", value: "76.76.21.21", ttl: 300 },
-      { type: "CNAME", name: "www", value: "nbh.co.il", ttl: 300 },
+      { type: "CNAME", name: "www", value: "wma.co.il", ttl: 300 },
       { type: "MX", name: "@", value: "aspmx.l.google.com", ttl: 3600 },
     ],
     uptime: 99.98, responseTime: 245
@@ -98,15 +99,138 @@ const statusConfig = {
   expired: { label: "פג תוקף", color: "text-gray-700", bg: "bg-gray-50", border: "border-gray-200", dot: "bg-gray-400", icon: X },
 };
 
-export default function DomainsPage() {
-  const [selectedDomain, setSelectedDomain] = useState<DomainRecord | null>(domains[1]);
+interface ApiDomain {
+  id: string; domain: string; site_id: string | null; registrar: string | null;
+  expires_at: string | null; ssl_expires_at: string | null; status: string;
+  auto_renew: boolean; ssl_enabled: boolean; notes: string | null;
+  sites?: { name: string } | null;
+}
 
-  const criticalDomains = domains.filter(d => d.status === "critical" || d.daysUntilExpiry < 30);
-  const healthyCount = domains.filter(d => d.status === "healthy").length;
-  const expiredCount = domains.filter(d => d.status === "expired").length;
+function apiToDomainRecord(d: ApiDomain): DomainRecord {
+  const now = new Date();
+  const expiresAt = d.expires_at ? new Date(d.expires_at) : null;
+  const sslExpiresAt = d.ssl_expires_at ? new Date(d.ssl_expires_at) : null;
+  const daysUntilExpiry = expiresAt ? Math.round((expiresAt.getTime() - now.getTime()) / 86400000) : 999;
+  const sslDaysLeft = sslExpiresAt ? Math.round((sslExpiresAt.getTime() - now.getTime()) / 86400000) : 999;
+  const computedStatus: DomainRecord["status"] = daysUntilExpiry <= 0 ? "expired" : daysUntilExpiry < 14 ? "critical" : daysUntilExpiry < 30 ? "expiring" : "healthy";
+  return {
+    id: d.id,
+    domain: d.domain,
+    client: (d.sites as { name: string } | null)?.name ?? "—",
+    registrar: d.registrar ?? "—",
+    expiresAt: d.expires_at ?? "—",
+    daysUntilExpiry,
+    sslExpiresAt: d.ssl_expires_at ?? "—",
+    sslDaysLeft,
+    sslIssuer: "—",
+    status: computedStatus,
+    sslStatus: sslDaysLeft <= 0 ? "expired" : sslDaysLeft < 14 ? "expiring" : "valid",
+    dns: [],
+    uptime: 100,
+    responseTime: 0,
+  };
+}
+
+function AddDomainModal({ open, onClose, onAdded }: { open: boolean; onClose: () => void; onAdded: (d: DomainRecord) => void }) {
+  const [form, setForm] = useState({ domain: "", registrar: "", expires_at: "", ssl_expires_at: "" });
+  const [saving, setSaving] = useState(false);
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(p => ({ ...p, [k]: e.target.value }));
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.domain) return;
+    setSaving(true);
+    const res = await fetch("/api/admin/domains", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    setSaving(false);
+    if (res.ok) {
+      const data = await res.json();
+      onAdded(apiToDomainRecord(data));
+      onClose();
+      setForm({ domain: "", registrar: "", expires_at: "", ssl_expires_at: "" });
+    }
+  }
+
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-2xl border bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b px-5 py-4">
+          <h3 className="font-semibold flex items-center gap-2"><Globe className="h-4 w-4 text-primary" /> הוסף דומיין</h3>
+          <button onClick={onClose}><X className="h-4 w-4" /></button>
+        </div>
+        <form onSubmit={submit} className="p-5 space-y-3">
+          {[
+            { k: "domain" as const,        label: "דומיין *",          placeholder: "example.co.il",  type: "text" },
+            { k: "registrar" as const,     label: "רשם דומיינים",       placeholder: "Namecheap",      type: "text" },
+            { k: "expires_at" as const,    label: "תאריך פקיעת דומיין", placeholder: "",                type: "date" },
+            { k: "ssl_expires_at" as const, label: "תאריך פקיעת SSL",  placeholder: "",                type: "date" },
+          ].map(f => (
+            <div key={f.k} className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">{f.label}</label>
+              <input type={f.type} value={form[f.k]} onChange={set(f.k)} placeholder={f.placeholder}
+                className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            </div>
+          ))}
+          <div className="flex gap-2 pt-1">
+            <Button type="submit" className="flex-1 gap-2" disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              הוסף
+            </Button>
+            <Button type="button" variant="outline" onClick={onClose}>ביטול</Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export default function DomainsPage() {
+  const [allDomains, setAllDomains] = useState<DomainRecord[]>(domains);
+  const [selectedDomain, setSelectedDomain] = useState<DomainRecord | null>(domains[1]);
+  const [addOpen, setAddOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/admin/domains")
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setAllDomains(data.map(apiToDomainRecord));
+          setSelectedDomain(null);
+        }
+      })
+      .catch(() => {}); // keep mock data on error
+  }, []);
+
+  async function refresh() {
+    setRefreshing(true);
+    try {
+      const r = await fetch("/api/admin/domains");
+      const data = await r.json();
+      if (Array.isArray(data) && data.length > 0) {
+        setAllDomains(data.map(apiToDomainRecord));
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  const criticalDomains = allDomains.filter(d => d.status === "critical" || d.daysUntilExpiry < 30);
+  const healthyCount = allDomains.filter(d => d.status === "healthy").length;
+  const expiredCount = allDomains.filter(d => d.status === "expired").length;
 
   return (
     <div className="space-y-6">
+      <AddDomainModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onAdded={d => setAllDomains(prev => [d, ...prev])}
+      />
+
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
@@ -114,15 +238,15 @@ export default function DomainsPage() {
             ניהול דומיינים & SSL
           </h2>
           <p className="text-muted-foreground">
-            {domains.length} דומיינים · {healthyCount} תקינים · {criticalDomains.length} דורשים טיפול
+            {allDomains.length} דומיינים · {healthyCount} תקינים · {criticalDomains.length} דורשים טיפול
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
-            <RefreshCw className="h-4 w-4" />
+          <Button variant="outline" className="gap-2" onClick={refresh} disabled={refreshing}>
+            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
             רענן הכל
           </Button>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => setAddOpen(true)}>
             <Plus className="h-4 w-4" />
             הוסף דומיין
           </Button>
@@ -164,9 +288,9 @@ export default function DomainsPage() {
       <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
         {[
           { label: "תקינים", value: healthyCount, color: "text-green-600", bg: "bg-green-50" },
-          { label: "מתפוגגים", value: domains.filter(d => d.status === "critical").length, color: "text-red-600", bg: "bg-red-50" },
-          { label: "SSL תקף", value: domains.filter(d => d.sslStatus === "valid").length, color: "text-blue-600", bg: "bg-blue-50" },
-          { label: "ממוצע Uptime", value: `${(domains.filter(d => d.uptime > 0).reduce((s, d) => s + d.uptime, 0) / domains.filter(d => d.uptime > 0).length).toFixed(1)}%`, color: "text-purple-600", bg: "bg-purple-50" },
+          { label: "מתפוגגים", value: allDomains.filter(d => d.status === "critical").length, color: "text-red-600", bg: "bg-red-50" },
+          { label: "SSL תקף", value: allDomains.filter(d => d.sslStatus === "valid").length, color: "text-blue-600", bg: "bg-blue-50" },
+          { label: "ממוצע Uptime", value: `${(allDomains.filter(d => d.uptime > 0).reduce((s, d) => s + d.uptime, 0) / allDomains.filter(d => d.uptime > 0).length).toFixed(1)}%`, color: "text-purple-600", bg: "bg-purple-50" },
         ].map(s => (
           <Card key={s.label}>
             <CardContent className="p-4">
@@ -182,7 +306,7 @@ export default function DomainsPage() {
         <Card>
           <CardContent className="p-0">
             <div className="divide-y">
-              {domains.map(domain => {
+              {allDomains.map(domain => {
                 const config = statusConfig[domain.status];
                 const Icon = config.icon;
                 const isSelected = selectedDomain?.id === domain.id;

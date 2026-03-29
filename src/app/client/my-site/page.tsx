@@ -3,27 +3,34 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Globe, ExternalLink, Github, RefreshCw, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { Globe, ExternalLink, Github, RefreshCw, CheckCircle2, Clock, XCircle, Edit3, Bot, Eye } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import Link from "next/link";
+import type { Database } from "@/types/database";
+
+type SiteRow = Database["public"]["Tables"]["sites"]["Row"];
+type DeploymentRow = Database["public"]["Tables"]["deployments"]["Row"];
 
 export default async function MySitePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const { data: sites } = await supabase
+  const { data: sitesRaw } = await supabase
     .from("sites")
     .select("*")
     .eq("owner_id", user.id);
+  const sites = (sitesRaw ?? []) as SiteRow[];
 
-  const site = sites?.[0];
+  const site = sites[0] ?? null;
 
-  const { data: deployments } = await supabase
+  const { data: deploymentsRaw } = await supabase
     .from("deployments")
     .select("*")
     .eq("site_id", site?.id ?? "")
     .order("created_at", { ascending: false })
     .limit(10);
+  const deployments = (deploymentsRaw ?? []) as DeploymentRow[];
 
   const statusConfig: Record<string, { label: string; variant: "success" | "warning" | "destructive" | "info" }> = {
     active: { label: "פעיל ✓", variant: "success" },
@@ -77,6 +84,22 @@ export default async function MySitePage() {
                     </div>
                   </div>
                 )}
+                {/* Preview link */}
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-indigo-50 border border-indigo-100">
+                  <Eye className="h-4 w-4 text-indigo-600" />
+                  <div>
+                    <p className="text-xs text-indigo-500">תצוגה מקדימה</p>
+                    <a
+                      href={`/sites/${site.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-indigo-600 hover:underline flex items-center gap-1"
+                    >
+                      פתח תצוגה מקדימה
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                </div>
                 {site.netlify_url && (
                   <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
                     <Globe className="h-4 w-4 text-muted-foreground" />
@@ -90,6 +113,15 @@ export default async function MySitePage() {
                     </div>
                   </div>
                 )}
+
+                {/* AI Chatbot status */}
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+                  <Bot className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">AI Chatbot</p>
+                    <p className="text-sm font-medium">מוגדר ע"י הסוכנות</p>
+                  </div>
+                </div>
                 {site.github_repo && (
                   <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
                     <Github className="h-4 w-4 text-muted-foreground" />
@@ -108,14 +140,22 @@ export default async function MySitePage() {
                 </div>
               </div>
 
-              {site.netlify_url && (
+              <div className="flex flex-wrap gap-2">
                 <Button className="gap-2" asChild>
-                  <a href={site.netlify_url} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-4 w-4" />
-                    פתח את האתר
-                  </a>
+                  <Link href="/client/editor">
+                    <Edit3 className="h-4 w-4" />
+                    ערוך תוכן האתר
+                  </Link>
                 </Button>
-              )}
+                {site.netlify_url && (
+                  <Button variant="outline" className="gap-2" asChild>
+                    <a href={site.netlify_url} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-4 w-4" />
+                      פתח את האתר
+                    </a>
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -176,7 +216,7 @@ export default async function MySitePage() {
           <CardContent className="flex flex-col items-center justify-center py-20 text-center">
             <Globe className="h-14 w-14 text-muted-foreground/30 mb-4" />
             <h3 className="text-lg font-semibold mb-1">אין אתר מוגדר עדיין</h3>
-            <p className="text-muted-foreground text-sm mb-6">צור קשר עם NBH Agency להתחלת הפרויקט</p>
+            <p className="text-muted-foreground text-sm mb-6">צור קשר עם WMA Agency להתחלת הפרויקט</p>
             <Button className="gap-2">
               💬 צור קשר עכשיו
             </Button>

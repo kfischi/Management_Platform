@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Building2, Eye, EyeOff, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 export default function LoginPage() {
   const router = useRouter();
-  const supabase = createClient();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,6 +23,7 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
+    const supabase = createClient();
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -63,7 +62,7 @@ export default function LoginPage() {
             <Building2 className="h-7 w-7 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">NBH Agency</h1>
+            <h1 className="text-2xl font-bold text-white">WMA Agency</h1>
             <p className="text-slate-400 text-sm">Management Platform</p>
           </div>
         </div>
@@ -133,10 +132,7 @@ export default function LoginPage() {
         </Card>
 
         <p className="text-center text-sm text-slate-400">
-          אין לך חשבון?{" "}
-          <Link href="/auth/register" className="text-primary hover:underline">
-            צור חשבון
-          </Link>
+          לקבלת גישה — פנה לסוכנות שבנתה את האתר שלך
         </p>
       </div>
     </div>

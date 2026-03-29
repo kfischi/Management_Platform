@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "NBH Admin - Agency Management Platform",
+  title: "WMA Admin - Agency Management Platform",
   description: "פלטפורמת ניהול סוכנות מלאה",
 };
 
